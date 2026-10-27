@@ -3,7 +3,7 @@
   "displayName": "Arthas VSCode",
   "description": "%extension.description%",
   "version": "0.2.0",
-  "publisher": "arthas-vscode",
+  "publisher": "wxk6b1203",
   "license": "MIT",
   "icon": "media/icon.png",
   "engines": {
@@ -21,7 +21,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/arthas-vscode/arthas-vscode"
+    "url": "https://github.com/wxk6b1203/arthas.vscode"
   },
   "activationEvents": [],
   "main": "./out/extension.js",
