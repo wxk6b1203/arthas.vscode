@@ -1,0 +1,226 @@
+{
+  "name": "arthas-vscode",
+  "displayName": "Arthas VSCode",
+  "description": "%extension.description%",
+  "version": "0.1.0",
+  "publisher": "arthas-vscode",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "arthas",
+    "java",
+    "diagnostics",
+    "debug"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arthas-vscode/arthas-vscode"
+  },
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "arthas-vscode.quick", "title": "%cmd.quick%" },
+      { "command": "arthas-vscode.watch", "title": "%cmd.watch%" },
+      { "command": "arthas-vscode.trace", "title": "%cmd.trace%" },
+      { "command": "arthas-vscode.stack", "title": "%cmd.stack%" },
+      { "command": "arthas-vscode.monitor", "title": "%cmd.monitor%" },
+      { "command": "arthas-vscode.tt", "title": "%cmd.tt%" },
+      { "command": "arthas-vscode.vmtool.invoke", "title": "%cmd.vmtool.invoke%" },
+      { "command": "arthas-vscode.vmtool.setField", "title": "%cmd.vmtool.setField%" },
+      { "command": "arthas-vscode.spring.ognlInvoke", "title": "%cmd.spring.ognlInvoke%" },
+      { "command": "arthas-vscode.spring.watchInvoke", "title": "%cmd.spring.watchInvoke%" },
+      { "command": "arthas-vscode.spring.ttInvoke", "title": "%cmd.spring.ttInvoke%" },
+      { "command": "arthas-vscode.spring.getBeanSetField", "title": "%cmd.spring.getBeanSetField%" },
+      { "command": "arthas-vscode.getstatic", "title": "%cmd.getstatic%" },
+      { "command": "arthas-vscode.ognl.static", "title": "%cmd.ognl.static%" },
+      { "command": "arthas-vscode.ognl.setStatic", "title": "%cmd.ognl.setStatic%" },
+      { "command": "arthas-vscode.ognl.grammarHelp", "title": "%cmd.ognl.grammarHelp%" },
+      { "command": "arthas-vscode.ognl.enum", "title": "%cmd.ognl.enum%" },
+      { "command": "arthas-vscode.springProps.vmtoolSelected", "title": "%cmd.springProps.vmtoolSelected%" },
+      { "command": "arthas-vscode.springProps.vmtoolAll", "title": "%cmd.springProps.vmtoolAll%" },
+      { "command": "arthas-vscode.springProps.ognlSelected", "title": "%cmd.springProps.ognlSelected%" },
+      { "command": "arthas-vscode.springProps.ognlAll", "title": "%cmd.springProps.ognlAll%" },
+      { "command": "arthas-vscode.jad", "title": "%cmd.jad%" },
+      { "command": "arthas-vscode.sc", "title": "%cmd.sc%" },
+      { "command": "arthas-vscode.sm", "title": "%cmd.sm%" },
+      { "command": "arthas-vscode.logger", "title": "%cmd.logger%" },
+      { "command": "arthas-vscode.dump", "title": "%cmd.dump%" },
+      { "command": "arthas-vscode.classloader", "title": "%cmd.classloader%" },
+      { "command": "arthas-vscode.other.dashboard", "title": "%cmd.other.dashboard%" },
+      { "command": "arthas-vscode.other.heapdump", "title": "%cmd.other.heapdump%" },
+      { "command": "arthas-vscode.other.thread", "title": "%cmd.other.thread%" },
+      { "command": "arthas-vscode.other.jvm", "title": "%cmd.other.jvm%" },
+      { "command": "arthas-vscode.other.perfcounter", "title": "%cmd.other.perfcounter%" },
+      { "command": "arthas-vscode.other.vmoption", "title": "%cmd.other.vmoption%" },
+      { "command": "arthas-vscode.presets", "title": "%cmd.presets%" },
+      { "command": "arthas-vscode.install.boot", "title": "%cmd.install.boot%" },
+      { "command": "arthas-vscode.install.asSh", "title": "%cmd.install.asSh%" },
+      { "command": "arthas-vscode.docs", "title": "%cmd.docs%" },
+      { "command": "arthas-vscode.openSettings", "title": "%cmd.openSettings%" }
+    ],
+    "submenus": [
+      { "id": "arthas.command", "label": "%menu.arthasCommand%" },
+      { "id": "arthas.spring", "label": "%menu.spring%" },
+      { "id": "arthas.staticOgnl", "label": "%menu.staticOgnl%" },
+      { "id": "arthas.springProps", "label": "%menu.springProps%" },
+      { "id": "arthas.other", "label": "%menu.other%" }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "arthas.command",
+          "when": "editorLangId == java",
+          "group": "z_arthas@1"
+        }
+      ],
+      "arthas.command": [
+        { "command": "arthas-vscode.quick", "group": "a_quick@1" },
+        { "command": "arthas-vscode.watch", "when": "arthas.cmd.watch", "group": "a_basic@1" },
+        { "command": "arthas-vscode.trace", "when": "arthas.cmd.trace", "group": "a_basic@2" },
+        { "command": "arthas-vscode.stack", "when": "arthas.cmd.stack", "group": "a_basic@3" },
+        { "command": "arthas-vscode.monitor", "when": "arthas.cmd.monitor", "group": "a_basic@4" },
+        { "command": "arthas-vscode.tt", "when": "arthas.cmd.tt", "group": "a_basic@5" },
+        { "command": "arthas-vscode.vmtool.invoke", "when": "arthas.cmd.vmtool.invoke", "group": "b_vmtool@1" },
+        { "command": "arthas-vscode.vmtool.setField", "when": "arthas.cmd.vmtool.setField", "group": "b_vmtool@2" },
+        {
+          "submenu": "arthas.spring",
+          "group": "c_spring@1"
+        },
+        {
+          "submenu": "arthas.staticOgnl",
+          "group": "c_static@2"
+        },
+        { "command": "arthas-vscode.ognl.enum", "when": "arthas.cmd.ognl.enum", "group": "c_static@3" },
+        {
+          "submenu": "arthas.springProps",
+          "group": "d_props@1"
+        },
+        { "command": "arthas-vscode.jad", "when": "arthas.cmd.jad", "group": "e_search@1" },
+        { "command": "arthas-vscode.sc", "when": "arthas.cmd.sc", "group": "e_search@2" },
+        { "command": "arthas-vscode.sm", "when": "arthas.cmd.sm", "group": "e_search@3" },
+        { "command": "arthas-vscode.logger", "group": "e_search@4" },
+        { "command": "arthas-vscode.dump", "when": "arthas.cmd.dump", "group": "e_search@5" },
+        { "command": "arthas-vscode.classloader", "group": "e_search@6" },
+        {
+          "submenu": "arthas.other",
+          "group": "f_other@1"
+        },
+        { "command": "arthas-vscode.presets", "group": "f_other@2" },
+        { "command": "arthas-vscode.install.boot", "group": "g_install@1" },
+        { "command": "arthas-vscode.install.asSh", "group": "g_install@2" },
+        { "command": "arthas-vscode.docs", "group": "h_help@1" },
+        { "command": "arthas-vscode.openSettings", "group": "h_help@2" }
+      ],
+      "arthas.spring": [
+        { "command": "arthas-vscode.spring.ognlInvoke", "when": "arthas.cmd.spring.ognlInvoke", "group": "s@1" },
+        { "command": "arthas-vscode.spring.watchInvoke", "when": "arthas.cmd.spring.watchInvoke", "group": "s@2" },
+        { "command": "arthas-vscode.spring.ttInvoke", "when": "arthas.cmd.spring.ttInvoke", "group": "s@3" },
+        { "command": "arthas-vscode.spring.getBeanSetField", "when": "arthas.cmd.spring.getBeanSetField", "group": "s@4" }
+      ],
+      "arthas.staticOgnl": [
+        { "command": "arthas-vscode.getstatic", "when": "arthas.cmd.getstatic", "group": "o@1" },
+        { "command": "arthas-vscode.ognl.static", "when": "arthas.cmd.ognl.static", "group": "o@2" },
+        { "command": "arthas-vscode.ognl.setStatic", "when": "arthas.cmd.ognl.setStatic", "group": "o@3" },
+        { "command": "arthas-vscode.ognl.grammarHelp", "when": "arthas.cmd.ognl.grammarHelp", "group": "o@4" }
+      ],
+      "arthas.springProps": [
+        { "command": "arthas-vscode.springProps.vmtoolSelected", "group": "p@1" },
+        { "command": "arthas-vscode.springProps.vmtoolAll", "group": "p@2" },
+        { "command": "arthas-vscode.springProps.ognlSelected", "when": "arthas.springConfigured", "group": "p@3" },
+        { "command": "arthas-vscode.springProps.ognlAll", "when": "arthas.springConfigured", "group": "p@4" }
+      ],
+      "arthas.other": [
+        { "command": "arthas-vscode.other.dashboard", "group": "x@1" },
+        { "command": "arthas-vscode.other.heapdump", "group": "x@2" },
+        { "command": "arthas-vscode.other.thread", "group": "x@3" },
+        { "command": "arthas-vscode.other.jvm", "group": "x@4" },
+        { "command": "arthas-vscode.other.perfcounter", "group": "x@5" },
+        { "command": "arthas-vscode.other.vmoption", "group": "x@6" }
+      ]
+    },
+    "configuration": {
+      "title": "Arthas VSCode",
+      "properties": {
+        "arthas.invokeCount": {
+          "type": "number",
+          "default": 5,
+          "description": "%config.invokeCount%"
+        },
+        "arthas.monitorCount": {
+          "type": "number",
+          "default": 10,
+          "description": "%config.monitorCount%"
+        },
+        "arthas.monitorInterval": {
+          "type": "number",
+          "default": 10,
+          "description": "%config.monitorInterval%"
+        },
+        "arthas.depth": {
+          "type": "number",
+          "default": 3,
+          "description": "%config.depth%"
+        },
+        "arthas.printConditionExpress": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.printConditionExpress%"
+        },
+        "arthas.conditionExpressDisplay": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.conditionExpressDisplay%"
+        },
+        "arthas.traceSkipJdk": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.traceSkipJdk%"
+        },
+        "arthas.staticSpringContextOgnl": {
+          "type": "string",
+          "default": "@applicationContextProvider@context",
+          "description": "%config.staticSpringContextOgnl%"
+        },
+        "arthas.autoToUnicode": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.autoToUnicode%"
+        },
+        "arthas.selectProjectName": {
+          "type": "string",
+          "default": "",
+          "description": "%config.selectProjectName%"
+        },
+        "arthas.arthasZipDownloadUrl": {
+          "type": "string",
+          "default": "https://arthas.aliyun.com/download/latest_version?mirror=aliyun",
+          "description": "%config.arthasZipDownloadUrl%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "tsc -p tsconfig.test.json",
+    "test": "mocha out-test/test/**/*.test.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.21.5",
+    "mocha": "^10.4.0",
+    "typescript": "^5.4.5"
+  }
+}

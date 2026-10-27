@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "out-test",
+    "sourceMap": false,
+    "types": ["node", "mocha"]
+  },
+  "include": ["src", "test"]
+}
