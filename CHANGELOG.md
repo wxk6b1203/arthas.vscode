@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- README 改为英文为主（市场页），中文版拆分至 `README.zh-CN.md`，两文件顶部互链；目录结构补齐 script/mybatis 模块。
+
 ### Added
 
 - 复制成功通知新增「不再提示」按钮：一键关闭提示（写入全局设置 `arthas.showCopyNotification`，命令仍正常复制），并附「重新开启」反悔入口；设置页可手动开关。

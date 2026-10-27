@@ -1,106 +1,112 @@
 # Arthas VSCode
 
+**English** | [简体中文](./README.zh-CN.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-在 VSCode 中一键生成并复制 [Arthas](https://arthas.aliyun.com/) 命令。将光标放在 Java 类/方法/字段/枚举上，右键 **"Arthas 命令"** 即可按上下文生成 `watch` / `trace` / `tt` / `ognl` / `vmtool` / `sc` / `sm` / `jad` 等命令并复制到剪贴板。
+Generate and copy [Arthas](https://arthas.aliyun.com/doc/en/) commands right from your editor. Place the cursor on a Java class / method / field / enum, right-click **"Arthas Command"**, and the matching `watch` / `trace` / `tt` / `ognl` / `vmtool` / `sc` / `sm` / `jad` command is generated from the code context and copied to the clipboard.
 
-功能参考 [arthas-idea-plugin](https://github.com/WangJi92/arthas-idea-plugin)（IDEA 版）移植，命令模板与原插件逐条对齐。
+Feature set ported from [arthas-idea-plugin](https://github.com/WangJi92/arthas-idea-plugin) (the IntelliJ version); command templates match the original plugin one by one.
 
-## 功能总览
+## Feature Overview
 
-### 基础命令（右键 "Arthas 命令" 菜单，按光标上下文动态显示）
+### Basic commands (right-click "Arthas Command" menu, shown dynamically per cursor context)
 
-| 命令 | 说明 |
+| Command | Notes |
 | --- | --- |
-| Watch | `watch C m '{params,returnObj,throwExp}' -n 5 -x 3`；光标在字段上自动升级为静态字段 `@C@f` / 实例字段 `target.f` 变体 |
-| Trace / Stack / Monitor | 方法耗时链路 / 调用栈 / 调用统计（`--skipJDKMethod false`、`--cycle` 等对齐原插件默认值） |
-| TimeTunnel Tt | `tt -t C m -n 5`，复制后可继续选择 11 条 tt 后续命令（回放、`-w` 观察、获取 Spring Context、AOP 代理目标等） |
-| Vmtool | 获取实例调用方法/字段；修改实例字段（setter / 反射 / final 反射三变体） |
-| 静态方法/字段 | `getstatic`、`ognl '@C@method(默认参数)'`、反射修改静态字段（含去 final）、静态 OGNL 语法片段、枚举 ognl |
-| Spring 三件套 | 静态 Spring Context 调用 / Watch 调用 / Tt 调用，均附带 **AOP 代理目标** 变体命令 |
-| Spring 配置 | vmtool/ognl 读取选中配置项（默认 `spring.profiles.active`）与全量 PropertySource |
-| Jad / Sc / Sm / Dump | 反编译、查看类（含 classloader hash）、方法、dump 字节码 |
-| Logger | `logger --name X --level debug`，名称取自选中文本 → 光标类名 → ROOT |
-| 其他 | dashboard / heapdump / thread / jvm / perfcounter / vmoption / classloader / 30+ 常用预设命令（mybatis SQL、JDBC、forceGc、profiler…） |
-| 安装/帮助 | 复制 arthas 安装脚本、特殊用法文档链接、插件设置 |
+| Watch | `watch C m '{params,returnObj,throwExp}' -n 5 -x 3`; on a field it auto-upgrades to the static `@C@f` / instance `target.f` variants |
+| Trace / Stack / Monitor | Method timing chain / call stack / invocation statistics (defaults such as `--skipJDKMethod false`, `--cycle` aligned with the original plugin) |
+| TimeTunnel Tt | `tt -t C m -n 5`, followed by 11 optional follow-up commands (replay, `-w` expressions, getting the Spring Context, AOP proxy target, ...) |
+| Vmtool | Get an instance and invoke methods/fields; modify instance fields (setter / reflection / final-field reflection variants) |
+| Static method/field | `getstatic`, `ognl '@C@method(defaultParams)'`, reflection-based static field modification (incl. removing `final`), static OGNL snippets, enum ognl |
+| Spring trio | Static Spring Context invoke / Watch invoke / Tt invoke, each with an **AOP proxy target** variant command |
+| Spring properties | vmtool/ognl read of the selected property key (default `spring.profiles.active`) and of all property sources |
+| Jad / Sc / Sm / Dump | Decompile, inspect classes (incl. classloader hash), methods, dump bytecode |
+| Logger | `logger --name X --level debug`; name from selection → class at cursor → `ROOT` |
+| Misc | dashboard / heapdump / thread / jvm / perfcounter / vmoption / classloader / 30+ preset commands (mybatis SQL, JDBC, forceGc, profiler...) |
+| Install/Help | Copy arthas install scripts, curated doc links, extension settings |
 
-### 快速获取可用命令
+Supports **Lombok**: `@Data`/`@Setter` infer setter existence; `@Value`, `@Accessors(fluent = true)`, `@Setter(AccessLevel.NONE)` are correctly excluded.
 
-`Ctrl+Shift+P` → `Arthas: 快速获取可用命令`（或右键菜单第一项）：根据当前光标上下文过滤出所有可用命令，QuickPick 中展示完整命令串，选中即复制——等价 IDEA 插件的 "Quickly Get Available Command" 对话框。
+### Quickly Get Available Command
 
-### Mybatis Mapper XML 热重载
+`Ctrl+Shift+P` → `Arthas: Quickly Get Available Command` (or the first item of the context menu): filters every applicable command for the current cursor context, shows the full command string in the QuickPick, and copies on selection — equivalent to the IDEA plugin's "Quickly Get Available Command" dialog.
 
-在资源管理器右键单个 mapper `.xml`（或打开 xml 后右键 / 命令面板 `Arthas: Mybatis Mapper XML 热重载`），生成**自包含一键脚本**并复制：脚本在目标服务器上自动安装 arthas → 选 pid → 解码该 xml → `sc -d` 取 classloader hash → ognl 调用重载服务 bean 完成重载。通知上可**保存脚本到文件**（scp 到服务器执行）或打开文档。
+### Mybatis Mapper XML Hot Reload
 
-前置条件：
+Right-click a single mapper `.xml` in the Explorer (or in an XML editor / via the Command Palette) to generate a **self-contained one-liner script** and copy it: the script installs arthas on the target server → selects a pid → decodes the xml → resolves the classloader hash via `sc -d` → invokes the reload service bean via ognl. The notification offers **Save script to file** (then scp it) and **Open doc**.
 
-1. 配置静态 Spring Context（`arthas.staticSpringContextOgnl` 改为非默认值）；
-2. **目标应用需内置重载服务**：引入 [`mybatis-mapper-reload-spring-boot-start`](https://github.com/WangJi92/mybatis-mapper-reload-spring-boot-start)（bean 名/方法名可在设置中改），[中文说明](https://www.yuque.com/arthas-idea-plugin/help/ctgcbg)。
+Prerequisites:
 
-## 上下文识别
+1. A configured static Spring Context (`arthas.staticSpringContextOgnl` set to a non-default value);
+2. The **target application must contain the reload service**: add [`mybatis-mapper-reload-spring-boot-start`](https://github.com/WangJi92/mybatis-mapper-reload-spring-boot-start) (bean/method names configurable). [Chinese docs](https://www.yuque.com/arthas-idea-plugin/help/ctgcbg).
 
-- **主路径**：调用 [Language Support for Java(TM) by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.java) 的 DocumentSymbol 获取准确代码结构（推荐安装）。
-- **兜底路径**：内置轻量文本解析器，未安装 Java 插件或单文件打开时自动降级。
-- 识别能力：包名、内部类（`Outer$Inner`）、匿名类（`Foo*$*` 通配）、构造器（`<init>`）、静态/.final 修饰、方法参数类型→OGNL 默认实参、`@Component("x")` Spring Bean 名、setter 检测、枚举常量。
+## Context Resolution
 
-与 IDEA 插件的行为差异：光标在**方法体内**时视为该方法（IDEA 原版需要点在方法名上），更符合直觉。
+- **Primary path**: uses the DocumentSymbol API of [Language Support for Java(TM) by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.java) for accurate code structure (recommended).
+- **Fallback path**: built-in lightweight text parser, used automatically when the Java extension is absent or the file is opened standalone.
+- Recognizes: package, inner classes (`Outer$Inner`), anonymous classes (`Foo*$*` wildcard), constructors (`<init>`), static/final modifiers, method parameter types → OGNL default arguments, `@Component("x")` Spring bean names, setters, enum constants.
 
-## 设置（`文件 → 首选项 → 设置 → Arthas`）
+Deliberate difference from the IDEA plugin: the cursor **inside a method body** counts as that method (the original requires the method name), which is more intuitive.
 
-| 配置项 | 默认值 | 说明 |
+## Settings (`File → Preferences → Settings → Arthas`)
+
+| Setting | Default | Notes |
 | --- | --- | --- |
-| `arthas.invokeCount` | 5 | watch/trace/stack/tt 的 `-n` 次数 |
-| `arthas.monitorCount` / `arthas.monitorInterval` | 10 / 10 | monitor 的 `-n` 与 `--cycle` |
-| `arthas.depth` | 3 | `-x` 展开层级 |
-| `arthas.printConditionExpress` | false | 追加 `-v` |
-| `arthas.conditionExpressDisplay` | false | 追加 `'1==1'` 条件表达式 |
-| `arthas.traceSkipJdk` | false | false 时 trace 追加 `--skipJDKMethod false` |
-| `arthas.staticSpringContextOgnl` | `@applicationContextProvider@context` | **静态 Spring Context ognl**，改为非默认值后启用静态 Spring 相关命令（如 `@com.demo.ApplicationContextProvider@context`） |
-| `arthas.autoToUnicode` | true | 复制时中文自动转 `\uXXXX` |
-| `arthas.showCopyNotification` | true | 复制后的提示通知（含"打开文档/AOP 变体"按钮）；点通知上的**不再提示**可一键关闭 |
-| `arthas.manualSelectPid` | true | 一键脚本内 jps 交互选 pid；关闭时用 `selectProjectName` 直连 |
-| `arthas.selectProjectName` | 空 | 一键脚本 `--select` 值（jps -l 进程名） |
-| `arthas.arthasZipDownloadUrl` | arthas 官方地址 | 一键脚本下载安装 arthas zip 包的地址（内网可换） |
-| `arthas.mybatis.reloadBeanName` | `mybatisMapperXmlFileReloadService` | Mybatis 重载服务 bean 名（需应用内置） |
-| `arthas.mybatis.reloadMethodName` | `reloadAllSqlSessionFactoryMapper` | Mybatis 重载服务方法名 |
+| `arthas.invokeCount` | 5 | `-n` for watch/trace/stack/tt |
+| `arthas.monitorCount` / `arthas.monitorInterval` | 10 / 10 | `-n` and `--cycle` for monitor |
+| `arthas.depth` | 3 | `-x` expansion depth |
+| `arthas.printConditionExpress` | false | Append `-v` |
+| `arthas.conditionExpressDisplay` | false | Append the `'1==1'` condition express |
+| `arthas.traceSkipJdk` | false | When false, trace appends `--skipJDKMethod false` |
+| `arthas.staticSpringContextOgnl` | `@applicationContextProvider@context` | **Static Spring Context ognl**; set to a non-default value (e.g. `@com.demo.ApplicationContextProvider@context`) to enable the static-Spring commands |
+| `arthas.autoToUnicode` | true | Convert Chinese characters to `\uXXXX` when copying |
+| `arthas.showCopyNotification` | true | Post-copy notification (carries the "Open doc / AOP variant" buttons); click **Don't show again** on it to mute |
+| `arthas.manualSelectPid` | true | Interactive `jps` pid selection inside generated scripts; when off, `selectProjectName` is used directly |
+| `arthas.selectProjectName` | empty | `--select` value for generated scripts (`jps -l` process name) |
+| `arthas.arthasZipDownloadUrl` | arthas official URL | arthas zip download URL used by generated scripts (swap for intranet mirrors) |
+| `arthas.mybatis.reloadBeanName` | `mybatisMapperXmlFileReloadService` | Mybatis reload service bean name (app must contain it) |
+| `arthas.mybatis.reloadMethodName` | `reloadAllSqlSessionFactoryMapper` | Mybatis reload service method name |
 
-## 开发
+## Development
 
 ```bash
 npm install
-npm run compile           # esbuild 打包到 out/
-npm test                  # mocha 单元测试（74 个用例）
-npm run test-integration  # 真实 VSCode 宿主集成测试（基础 11 + Lombok 4 个用例）
+npm run compile           # esbuild bundle to out/
+npm test                  # mocha unit tests
+npm run test-integration  # real VSCode host integration tests (base + Lombok suites)
 ```
 
-- `F5` 启动 Extension Development Host 调试
-- `npx @vscode/vsce package` 打包 .vsix
+- `F5` to debug in the Extension Development Host
+- `npx @vscode/vsce package` to build a .vsix
 
-### 集成测试说明
+### Integration tests
 
-`npm run test-integration` 通过 [@vscode/test-electron](https://code.visualstudio.com/api/working-with-extensions/testing-extension) 拉起真实 VSCode 实例加载本扩展，在扩展宿主内打开 `test/fixtures/Demo.java`，移动光标/选中文本后执行右键菜单同款命令，断言写入剪贴板的完整命令串。
+`npm run test-integration` launches a real VSCode instance via [@vscode/test-electron](https://code.visualstudio.com/api/working-with-extensions/testing-extension), opens `test/fixtures/Demo.java` in the extension host, moves the cursor / selects text, runs the same commands as the context menu, and asserts the full command strings written to the clipboard.
 
-- **优先复用本机 VSCode**（自动探测常见安装路径；也可用环境变量 `VSCODE_EXECUTABLE_PATH` 指定）；找不到时自动下载 stable 版到 `.vscode-test/`（首次较慢）。
-- 测试实例使用 `.vscode-test/` 下的隔离 profile，不影响本机 VSCode 配置和已装扩展。
-- 默认覆盖**文本解析兜底路径**（通过 `setTextDocumentLanguage` 指定 java 语言，无需任何 Java 插件）。
-- 执行一次 `node tools/setup-redhat.js` 将本机 redhat.java 复制注册进测试实例后：基础套件同时覆盖 **DocumentSymbol 主路径**，并自动追加 **Lombok 套件**（`@Data`/`@Builder` fixture，验证方法名归一化、注解字段区间匹配、Lombok setter 推断、合成 Builder 类过滤）；可在 `test/fixtures-lombok/lib/` 放置 lombok jar 启用完整注解处理（jar 不入库）。
+- **Reuses the local VSCode** by default (common install paths auto-detected; override with `VSCODE_EXECUTABLE_PATH`); downloads a stable VSCode into `.vscode-test/` when not found (slow the first time).
+- The test instance uses an isolated profile under `.vscode-test/` — your local VSCode settings and extensions are untouched.
+- By default it covers the **text-parser fallback path** (java language assigned via `setTextDocumentLanguage`, no Java extension needed).
+- Run `node tools/setup-redhat.js` once to register the local redhat.java into the test instance: the base suite then also covers the **DocumentSymbol primary path**, and the **Lombok suite** is appended automatically (`@Data`/`@Builder` fixtures; method-name normalization, annotated-field range matching, Lombok setter inference, synthetic Builder class filtering). Put a lombok jar in `test/fixtures-lombok/lib/` to enable full annotation processing (jar not committed).
 
-### 目录结构
+### Project layout
 
 ```
 src/
-├── extension.ts        # 命令注册、菜单动态显隐(context key)、交互流程
-├── java/               # Java 上下文分析（symbolProvider 主路径 + textParser 兜底 + 默认值映射）
-├── command/            # 命令模板引擎（templates/commandContext/constantCommands/ttCommands）
-├── util/               # QuickPick/InputBox、剪贴板、i18n
-└── settings.ts         # 配置读取
+├── extension.ts        # command registration, dynamic menu visibility (context keys), UI flows
+├── java/               # Java context analysis (symbolProvider primary + textParser fallback + default values)
+├── command/            # command template engine (templates / commandContext / constantCommands / ttCommands)
+├── script/             # one-click bash script foundation (templates + one-liner generation)
+├── mybatis/            # Mybatis mapper xml hot reload flow
+├── util/               # QuickPick/InputBox, clipboard, i18n
+└── settings.ts         # configuration reader
 ```
 
-## 与原 IDEA 插件的差异
+## Differences from the IDEA plugin
 
-- vmtool setter 修改字段命令中 `instances[0]` 前的 `#` 已移除（原插件模板疑似笔误，同文件其余变体与官方文档均为无 `#` 写法）。
-- 一键脚本（Mybatis 重载等）分发方式仅剪贴板 + 保存到文件；OSS/S3/Redis 分发与 Arthas Tunnel 终端暂未移植，热更新 redefine/retransform 可基于同一脚本底座扩展。
-- 命令中因可选参数产生的连续空格收敛为单空格（功能等价）。
+- The stray `#` before `instances[0]` in the vmtool setter command was removed (likely a typo in the original template; every other variant and the official docs omit it).
+- One-click scripts (Mybatis reload etc.) are distributed via clipboard or saved file only; OSS/S3/Redis delivery and the Arthas Tunnel terminal are not ported. Hot swap redefine/retransform can be added on the same script foundation.
+- Accidental double spaces caused by optional parameters are collapsed to single spaces (functionally equivalent).
 
 ## License
 

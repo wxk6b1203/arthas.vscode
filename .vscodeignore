@@ -12,3 +12,4 @@ tsconfig.test.json
 tools/**
 *.vsix
 *.map
+README.zh-CN.md
