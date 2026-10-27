@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- 集成测试（`npm run test-integration`）：@vscode/test-electron 拉起本机 VSCode（找不到则自动下载），在真实扩展宿主中端到端验证激活、光标上下文识别（方法/构造器/静态字段/内部类/匿名类/枚举/选中文本）与剪贴板命令输出。
+
+### Fixed
+
+- 与光标无关的命令（dashboard/heapdump/thread/jvm/perfcounter/vmoption/classloader/logger/安装脚本/Spring 配置读取）不再要求 Java 光标上下文：命令面板可随时执行，右键菜单不再因光标在 import 等位置而隐藏。
+- 快速命令面板中「Ognl 调用枚举」改为弹出变体选择框（与右键菜单完整流程一致），此前会直接复制第一个变体。
+- Spring 三件套（静态 Context / Watch / Tt 调用）显隐条件对齐原插件：仅实例方法/实例字段可用（类级、静态方法不再显示）。
+- redhat.java 符号路径的 static/final 修饰符判定改为遮蔽字符串/注释后解析，避免声明行字符串/注释中出现 "static"/"final" 时误判。
+
+### Changed
+
+- 运行时 QuickPick/InputBox/通知文案全面双语（跟随 VSCode 显示语言）。
+- `vscode:prepublish` 改为 `--production` 压缩打包；`.vscodeignore` 排除 `*.vsix` / `*.map`。
+
+### Removed
+
+- 删除未使用的配置项 `arthas.selectProjectName` / `arthas.arthasZipDownloadUrl`（对应一键脚本功能未移植）。
+
 ## [0.1.0] - 2026-10-27
 
 ### Added

@@ -7,8 +7,6 @@ const SPRING_STEREOTYPES = [
   'Component', 'Service', 'Controller', 'RestController', 'Repository', 'Configuration',
 ];
 
-export const ERROR_BEAN_NAME = 'errorBeanName';
-
 export function uncapitalize(s: string): string {
   if (!s) {
     return s;

@@ -14,6 +14,8 @@ export async function editablePrompt(title: string, value: string): Promise<stri
 }
 
 export interface PickItem extends vscode.QuickPickItem {
+  /** 对应 CommandDef.id 等路由标识（快速命令面板回跳完整流程用） */
+  id?: string;
   /** 选中后要复制的命令（docs 链接等为空，用 url 字段） */
   command?: string;
   url?: string;

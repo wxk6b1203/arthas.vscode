@@ -12,8 +12,6 @@ export interface ArthasSettings {
   traceSkipJdk: boolean;
   staticSpringContextOgnl: string;
   autoToUnicode: boolean;
-  selectProjectName: string;
-  arthasZipDownloadUrl: string;
 }
 
 export const DEFAULT_SPRING_CONTEXT = '@applicationContextProvider@context';
@@ -28,8 +26,6 @@ export const DEFAULT_SETTINGS: ArthasSettings = {
   traceSkipJdk: false,
   staticSpringContextOgnl: DEFAULT_SPRING_CONTEXT,
   autoToUnicode: true,
-  selectProjectName: '',
-  arthasZipDownloadUrl: 'https://arthas.aliyun.com/download/latest_version?mirror=aliyun',
 };
 
 /**

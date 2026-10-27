@@ -9,7 +9,7 @@ import { ttCommands } from './command/ttCommands';
 import { resolveContext } from './java/javaContext';
 import { parseJavaText } from './java/textParser';
 import { buildModelFromSymbols } from './java/symbolProvider';
-import { JavaFileModel } from './java/model';
+import { JavaContext, JavaFileModel } from './java/model';
 import { getSettings, isSpringContextConfigured, ArthasSettings } from './settings';
 import { copyCommand, warnBuildFailed, warnNoJavaContext, warnNotSupported } from './util/clipboard';
 import { editablePrompt, PickItem, pickCommand } from './util/input';
@@ -24,6 +24,9 @@ interface ActiveContext {
 }
 
 const EXT = 'arthas-vscode';
+
+/** def / 常量条目的显示标签（跟随 VSCode 显示语言） */
+const labelOf = (zh: string, en?: string): string => t(zh, en ?? zh);
 
 const documentVersionCache = new WeakMap<vscode.TextDocument, { version: number; model: JavaFileModel | null }>();
 
@@ -80,6 +83,41 @@ function buildInputOf(ctx: ActiveContext): BuildInput {
   return { java: ctx.java!, settings: ctx.settings, vars: ctx.vars };
 }
 
+/** 无 Java 上下文时给 contextFree 命令用的空上下文 */
+const NULL_JAVA_CONTEXT: JavaContext = {
+  packageName: '',
+  fileBaseName: '',
+  className: '',
+  kind: 'class',
+  name: '',
+  methodName: '*',
+  isConstructor: false,
+  isStatic: false,
+  isFinal: false,
+  isEnumClass: false,
+  isAnonymous: false,
+  isInnerClass: false,
+  memberClassSimpleName: '',
+  methodParamTypes: [],
+  hasSetter: false,
+  springBeanName: '',
+};
+
+/** contextFree 命令的兜底上下文：选中文本仍取自当前编辑器（任意语言文件） */
+function fallbackStubContext(): ActiveContext {
+  const editor = vscode.window.activeTextEditor;
+  const selectedText =
+    editor && !editor.selection.isEmpty ? editor.document.getText(editor.selection).trim() : '';
+  const settings = getSettings();
+  return {
+    java: NULL_JAVA_CONTEXT,
+    settings,
+    vars: buildVars(NULL_JAVA_CONTEXT, settings, null, selectedText),
+    model: null,
+    selectedText,
+  };
+}
+
 // ---------- 各特殊流程 ----------
 
 async function runLogger(ctx: ActiveContext): Promise<void> {
@@ -105,7 +143,7 @@ async function runEnum(def: CommandDef, ctx: ActiveContext): Promise<void> {
     warnBuildFailed();
     return;
   }
-  const items: PickItem[] = variants.map((v) => ({ label: v.label, detail: v.command }));
+  const items: PickItem[] = variants.map((v) => ({ label: labelOf(v.label, v.labelEn), detail: v.command }));
   const picked = await pickCommand(t('选择枚举 ognl 变体', 'Select enum ognl variant'), items);
   if (picked?.command) {
     await copyCommand(picked.command, { docUrl: def.docUrl });
@@ -118,16 +156,16 @@ async function runTt(def: CommandDef, ctx: ActiveContext): Promise<void> {
     warnBuildFailed();
     return;
   }
-  const edited = await editablePrompt(def.label, base);
+  const edited = await editablePrompt(labelOf(def.label, def.labelEn), base);
   if (edited === undefined) {
     return;
   }
   const alt = def.altBuild ? def.altBuild(buildInputOf(ctx)) : null;
-  await copyCommand(edited, { docUrl: def.docUrl, alt: alt ? { label: def.altLabel ?? '', command: alt } : undefined });
+  await copyCommand(edited, { docUrl: def.docUrl, alt: alt ? { label: labelOf(def.altLabel ?? '', def.altLabelEn), command: alt } : undefined });
 
   // tt 后续命令（等价 IDEA TimeTunnelDialog 的下拉）
   const items: PickItem[] = ttCommands.map((c) => ({
-    label: c.label,
+    label: labelOf(c.label, c.labelEn),
     detail: c.command,
   }));
   const picked = await pickCommand(t('选择 tt 后续命令（Esc 跳过）', 'Select tt follow-up command (Esc to skip)'), items);
@@ -160,10 +198,14 @@ async function springContextGuard(ctx: ActiveContext): Promise<boolean> {
 // ---------- 通用执行 ----------
 
 async function runDef(def: CommandDef): Promise<void> {
-  const ctx = await resolveActiveContext();
+  let ctx = await resolveActiveContext();
   if (!ctx) {
-    warnNoJavaContext();
-    return;
+    // 与光标无关的命令（dashboard/logger/classloader/安装脚本等）无需 Java 上下文
+    if (!def.contextFree) {
+      warnNoJavaContext();
+      return;
+    }
+    ctx = fallbackStubContext();
   }
   if (!def.support(buildInputOf(ctx))) {
     warnNotSupported();
@@ -181,7 +223,10 @@ async function runDef(def: CommandDef): Promise<void> {
     await runTt(def, ctx);
     return;
   }
-  if (def.id === 'spring.ognlInvoke' || def.id === 'spring.getBeanSetField') {
+  if (
+    def.id === 'spring.ognlInvoke' || def.id === 'spring.getBeanSetField' ||
+    def.id === 'springProps.ognlSelected' || def.id === 'springProps.ognlAll'
+  ) {
     if (!(await springContextGuard(ctx))) {
       return;
     }
@@ -193,7 +238,7 @@ async function runDef(def: CommandDef): Promise<void> {
   }
   let final = command;
   if (def.editable) {
-    const edited = await editablePrompt(def.label, command);
+    const edited = await editablePrompt(labelOf(def.label, def.labelEn), command);
     if (edited === undefined) {
       return;
     }
@@ -202,7 +247,7 @@ async function runDef(def: CommandDef): Promise<void> {
   const alt = def.altBuild ? def.altBuild(buildInputOf(ctx)) : null;
   await copyCommand(final, {
     docUrl: def.docUrl,
-    alt: alt ? { label: def.altLabel ?? '', command: alt } : undefined,
+    alt: alt ? { label: labelOf(def.altLabel ?? '', def.altLabelEn), command: alt } : undefined,
   });
 }
 
@@ -225,13 +270,15 @@ async function runQuick(): Promise<void> {
       continue;
     }
     items.push({
-      label: def.label,
+      id: def.id,
+      label: labelOf(def.label, def.labelEn),
       description: def.group === 'quickOnly' ? t('增强', 'extra') : undefined,
       detail: command ?? t('（将弹出选择框）', '(a picker will open)'),
       command: command ?? undefined,
     });
   }
   items.push({
+    id: '__presets__',
     label: `$(rocket) ${t('常用预设命令...', 'Common constant commands...')}`,
     detail: t('dispatcher/mybatis/jdbc/profiler/gc 等 30+ 条', 'dispatcher/mybatis/jdbc/profiler/gc and 30+ more'),
   });
@@ -239,7 +286,7 @@ async function runQuick(): Promise<void> {
   if (!picked) {
     return;
   }
-  if (picked.label.includes('常用预设命令') || picked.label.includes('Common constant')) {
+  if (picked.id === '__presets__') {
     await runPresets();
     return;
   }
@@ -247,7 +294,7 @@ async function runQuick(): Promise<void> {
     await copyCommand(picked.command);
   } else {
     // logger / enum：找到对应 def 走完整流程
-    const def = commandDefs.find((d) => d.label === picked.label);
+    const def = commandDefs.find((d) => d.id === picked.id);
     if (def) {
       await runDef(def);
     }
@@ -256,7 +303,7 @@ async function runQuick(): Promise<void> {
 
 async function runPresets(): Promise<void> {
   const items: PickItem[] = constantCommands.map((c) => ({
-    label: c.label,
+    label: labelOf(c.label, c.labelEn),
     detail: c.command,
     command: c.command,
     url: c.docUrl,
@@ -269,20 +316,23 @@ async function runPresets(): Promise<void> {
 
 // ---------- 文档链接 ----------
 
-const docLinks: Array<{ label: string; url: string }> = [
-  { label: 'Arthas 官方文档', url: 'https://arthas.aliyun.com/doc/' },
-  { label: 'Arthas 进阶使用', url: 'https://arthas.aliyun.com/doc/advanced-use.html' },
-  { label: 'arthas-idea-plugin 使用文档（语雀）', url: 'https://www.yuque.com/arthas-idea-plugin' },
-  { label: 'arthas-idea-plugin 特殊用法合集', url: 'https://www.yuque.com/arthas-idea-plugin/help/zkuar3' },
-  { label: 'Watch 观察静态字段/调用静态方法', url: 'https://arthas.aliyun.com/doc/watch.html' },
-  { label: '静态 Spring Context 获取 Bean 说明', url: 'https://www.yuque.com/arthas-idea-plugin/help/ugrc8n' },
-  { label: '通过 tt 获取 Spring Context', url: 'https://www.yuque.com/arthas-idea-plugin/help/uldktc' },
-  { label: 'arthas-idea-plugin GitHub', url: 'https://github.com/WangJi92/arthas-idea-plugin' },
-  { label: 'arthas-plugin-demo 示例工程', url: 'https://github.com/WangJi92/arthas-plugin-demo' },
+const docLinks: Array<{ label: string; labelEn: string; url: string }> = [
+  { label: 'Arthas 官方文档', labelEn: 'Arthas official docs', url: 'https://arthas.aliyun.com/doc/' },
+  { label: 'Arthas 进阶使用', labelEn: 'Arthas advanced usage', url: 'https://arthas.aliyun.com/doc/advanced-use.html' },
+  { label: 'arthas-idea-plugin 使用文档（语雀）', labelEn: 'arthas-idea-plugin docs (Yuque)', url: 'https://www.yuque.com/arthas-idea-plugin' },
+  { label: 'arthas-idea-plugin 特殊用法合集', labelEn: 'arthas-idea-plugin special recipes', url: 'https://www.yuque.com/arthas-idea-plugin/help/zkuar3' },
+  { label: 'Watch 观察静态字段/调用静态方法', labelEn: 'Watch static fields / invoke static methods', url: 'https://arthas.aliyun.com/doc/watch.html' },
+  { label: '静态 Spring Context 获取 Bean 说明', labelEn: 'Get beans via static Spring Context', url: 'https://www.yuque.com/arthas-idea-plugin/help/ugrc8n' },
+  { label: '通过 tt 获取 Spring Context', labelEn: 'Get Spring Context via tt', url: 'https://www.yuque.com/arthas-idea-plugin/help/uldktc' },
+  { label: 'arthas-idea-plugin GitHub', labelEn: 'arthas-idea-plugin GitHub', url: 'https://github.com/WangJi92/arthas-idea-plugin' },
+  { label: 'arthas-plugin-demo 示例工程', labelEn: 'arthas-plugin-demo sample project', url: 'https://github.com/WangJi92/arthas-plugin-demo' },
 ];
 
 async function runDocs(): Promise<void> {
-  const picked = await pickCommand(t('选择文档链接', 'Select a doc link'), docLinks.map((d) => ({ label: d.label, url: d.url })));
+  const picked = await pickCommand(
+    t('选择文档链接', 'Select a doc link'),
+    docLinks.map((d) => ({ label: labelOf(d.label, d.labelEn), url: d.url })),
+  );
   if (picked?.url) {
     vscode.env.openExternal(vscode.Uri.parse(picked.url));
   }
@@ -314,7 +364,9 @@ async function updateContextKeys(): Promise<void> {
     }
   }
   for (const def of commandDefs) {
-    await setContext(`arthas.cmd.${def.id}`, !!input && def.support(input));
+    // 与光标无关的命令（dashboard/logger/安装脚本等）始终可用，不受光标位置影响
+    const supported = def.contextFree ? true : !!input && def.support(input);
+    await setContext(`arthas.cmd.${def.id}`, supported);
   }
 }
 

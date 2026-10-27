@@ -202,7 +202,7 @@ describe('templates: spring 系列', () => {
   it('未配置 spring context 时 ognlInvoke 不支持', () => {
     const def = getDef('spring.ognlInvoke')!;
     assert.ok(!def.support(input(methodCtx(), DEFAULT_SETTINGS)));
-    assert.ok(!def.support(input(methodCtx({ kind: 'class' }), DEFAULT_SETTINGS)) === false || true);
+    assert.ok(!def.support(input(methodCtx({ kind: 'class' }), DEFAULT_SETTINGS)));
   });
 
   it('spring ognlInvoke', () => {
@@ -227,12 +227,14 @@ describe('templates: spring 系列', () => {
     );
   });
 
-  it('类上下文 bean 调用无尾点（issue 124）', () => {
-    const ctx = methodCtx({ kind: 'class', name: 'Foo', methodName: '*' });
-    assert.strictEqual(
-      build('spring.ttInvoke', ctx, springSettings),
-      `tt -w 'target.getApplicationContext().getBean("foo")'`,
-    );
+  it('spring 三件套对齐上游：仅实例方法/实例字段可用', () => {
+    for (const id of ['spring.ognlInvoke', 'spring.watchInvoke', 'spring.ttInvoke']) {
+      const def = getDef(id)!;
+      assert.ok(!def.support(input(methodCtx({ kind: 'class', name: 'Foo', methodName: '*' }), springSettings)), `${id} 类上下文应不支持`);
+      assert.ok(!def.support(input(methodCtx({ isStatic: true }), springSettings)), `${id} 静态方法应不支持`);
+      assert.ok(def.support(input(methodCtx(), springSettings)), `${id} 实例方法应支持`);
+      assert.ok(def.support(input(methodCtx({ kind: 'field', name: 'size', methodName: '*', fieldTypeName: 'int' }), springSettings)), `${id} 实例字段应支持`);
+    }
   });
 
   it('spring getBean setField', () => {
@@ -333,6 +335,24 @@ describe('commandDefs 完整性', () => {
       'install.boot', 'install.asSh',
     ]) {
       assert.ok(ids.has(id), `缺少 def: ${id}`);
+    }
+  });
+
+  it('所有 def 都有双语标签', () => {
+    for (const def of commandDefs) {
+      assert.ok(def.labelEn, `${def.id} 缺少 labelEn`);
+    }
+  });
+
+  it('contextFree 命令：support 恒真，build 无光标上下文也可生成（logger 由 handler 处理）', () => {
+    const stub = input(methodCtx({ kind: 'class', className: '', name: '', methodName: '*' }));
+    const contextFreeDefs = commandDefs.filter((d) => d.contextFree);
+    assert.ok(contextFreeDefs.length >= 10, 'contextFree 覆盖 other.*/install.*/springProps.*/logger/classloader');
+    for (const def of contextFreeDefs) {
+      assert.strictEqual(def.support(stub), true, `${def.id} contextFree 应恒支持`);
+      if (def.id !== 'logger') {
+        assert.ok(def.build(stub), `${def.id} 应能生成命令`);
+      }
     }
   });
 });

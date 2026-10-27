@@ -51,7 +51,5 @@
   "config.conditionExpressDisplay": "Append default condition express '1==1' to generated commands.",
   "config.traceSkipJdk": "Skip JDK methods in trace. When false, appends --skipJDKMethod false.",
   "config.staticSpringContextOgnl": "Static spring context ognl expression, e.g. @com.demo.ApplicationContextProvider@context. Must NOT be the default value to enable the static spring context features.",
-  "config.autoToUnicode": "Automatically convert Chinese characters in copied commands to \\uXXXX unicode escapes.",
-  "config.selectProjectName": "Default --select value used by generated one-click scripts.",
-  "config.arthasZipDownloadUrl": "Download URL of the arthas zip package used by generated scripts."
+  "config.autoToUnicode": "Automatically convert Chinese characters in copied commands to \\uXXXX unicode escapes."
 }

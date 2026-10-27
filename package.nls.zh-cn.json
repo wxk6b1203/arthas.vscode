@@ -51,7 +51,5 @@
   "config.conditionExpressDisplay": "生成的命令追加默认条件表达式 '1==1'。",
   "config.traceSkipJdk": "trace 是否跳过 JDK 方法。为 false 时追加 --skipJDKMethod false。",
   "config.staticSpringContextOgnl": "静态 Spring Context 的 ognl 表达式，例如 @com.demo.ApplicationContextProvider@context。必须修改为非默认值，静态 Spring 相关功能才会启用。",
-  "config.autoToUnicode": "复制命令时自动将中文字符转换为 \\uXXXX unicode 转义。",
-  "config.selectProjectName": "生成一键脚本时默认的 --select 参数值。",
-  "config.arthasZipDownloadUrl": "生成脚本使用的 arthas zip 完整包下载地址。"
+  "config.autoToUnicode": "复制命令时自动将中文字符转换为 \\uXXXX unicode 转义。"
 }

@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import { DocumentSymbol, SymbolKind, TextDocument } from 'vscode';
 import { JavaFileModel, MemberDecl, TypeDecl, TypeKind } from './model';
-import { parseFieldTypeName, parseParamTypes } from './textParser';
+import { maskJavaText, parseFieldTypeName, parseParamTypes } from './textParser';
 
 function symbolToTypeKind(kind: SymbolKind): TypeKind | null {
   switch (kind) {
@@ -30,7 +30,7 @@ function isFieldKind(kind: SymbolKind): boolean {
   return kind === SymbolKind.Field || kind === SymbolKind.Property || kind === SymbolKind.Constant || kind === SymbolKind.EnumMember;
 }
 
-/** 读取声明行原始文本（跨行取到 ')' 或 ';' 为止），用于修饰符/签名解析 */
+/** 读取声明行原始文本（跨行取到 ')' 或 ';' 为止）再遮蔽字符串/注释，用于修饰符/签名解析 */
 function declText(document: TextDocument, startLine: number): string {
   const parts: string[] = [];
   for (let l = startLine; l < Math.min(startLine + 5, document.lineCount); l++) {
@@ -40,7 +40,8 @@ function declText(document: TextDocument, startLine: number): string {
       break;
     }
   }
-  return parts.join(' ');
+  // 遮蔽字符串/注释内容，避免其中出现的 static/final/;/= 等干扰修饰符与签名解析
+  return maskJavaText(parts.join(' '));
 }
 
 function modifiersOf(document: TextDocument, startLine: number): { isStatic: boolean; isFinal: boolean } {

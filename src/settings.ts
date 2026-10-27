@@ -18,7 +18,5 @@ export function getSettings(): ArthasSettings {
     traceSkipJdk: config.get<boolean>('traceSkipJdk', false),
     staticSpringContextOgnl: config.get<string>('staticSpringContextOgnl', DEFAULT_SETTINGS.staticSpringContextOgnl),
     autoToUnicode: config.get<boolean>('autoToUnicode', true),
-    selectProjectName: config.get<string>('selectProjectName', ''),
-    arthasZipDownloadUrl: config.get<string>('arthasZipDownloadUrl', DEFAULT_SETTINGS.arthasZipDownloadUrl),
   };
 }

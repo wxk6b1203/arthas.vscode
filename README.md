@@ -48,19 +48,26 @@
 | `arthas.traceSkipJdk` | false | false 时 trace 追加 `--skipJDKMethod false` |
 | `arthas.staticSpringContextOgnl` | `@applicationContextProvider@context` | **静态 Spring Context ognl**，改为非默认值后启用静态 Spring 相关命令（如 `@com.demo.ApplicationContextProvider@context`） |
 | `arthas.autoToUnicode` | true | 复制时中文自动转 `\uXXXX` |
-| `arthas.selectProjectName` | 空 | 生成一键脚本时的 `--select` 默认值 |
-| `arthas.arthasZipDownloadUrl` | arthas 官方地址 | arthas zip 包下载地址 |
 
 ## 开发
 
 ```bash
 npm install
-npm run compile     # esbuild 打包到 out/
-npm test            # mocha 单元测试（61 个用例）
+npm run compile           # esbuild 打包到 out/
+npm test                  # mocha 单元测试（63 个用例）
+npm run test-integration  # 真实 VSCode 宿主集成测试（11 个用例）
 ```
 
 - `F5` 启动 Extension Development Host 调试
 - `npx @vscode/vsce package` 打包 .vsix
+
+### 集成测试说明
+
+`npm run test-integration` 通过 [@vscode/test-electron](https://code.visualstudio.com/api/working-with-extensions/testing-extension) 拉起真实 VSCode 实例加载本扩展，在扩展宿主内打开 `test/fixtures/Demo.java`，移动光标/选中文本后执行右键菜单同款命令，断言写入剪贴板的完整命令串。
+
+- **优先复用本机 VSCode**（自动探测常见安装路径；也可用环境变量 `VSCODE_EXECUTABLE_PATH` 指定）；找不到时自动下载 stable 版到 `.vscode-test/`（首次较慢）。
+- 测试实例使用 `.vscode-test/` 下的隔离 profile，不影响本机 VSCode 配置和已装扩展。
+- 测试实例未安装 redhat.java（通过 `setTextDocumentLanguage` 指定 java 语言），因此覆盖的是**文本解析兜底路径**；需要验证 DocumentSymbol 主路径时，可在测试实例中安装 redhat.java 后重跑。
 
 ### 目录结构
 
@@ -69,7 +76,7 @@ src/
 ├── extension.ts        # 命令注册、菜单动态显隐(context key)、交互流程
 ├── java/               # Java 上下文分析（symbolProvider 主路径 + textParser 兜底 + 默认值映射）
 ├── command/            # 命令模板引擎（templates/commandContext/constantCommands/ttCommands）
-├── ui/ + util/         # QuickPick/InputBox、剪贴板、i18n
+├── util/               # QuickPick/InputBox、剪贴板、i18n
 └── settings.ts         # 配置读取
 ```
 
