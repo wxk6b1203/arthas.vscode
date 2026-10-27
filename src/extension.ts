@@ -7,7 +7,7 @@ import { buildVars } from './command/commandContext';
 import { constantCommands } from './command/constantCommands';
 import { ttCommands } from './command/ttCommands';
 import { resolveContext } from './java/javaContext';
-import { parseJavaText } from './java/textParser';
+import { maskJavaText, parseJavaText } from './java/textParser';
 import { buildModelFromSymbols } from './java/symbolProvider';
 import { JavaContext, JavaFileModel } from './java/model';
 import { getSettings, isSpringContextConfigured, ArthasSettings } from './settings';
@@ -29,14 +29,20 @@ const EXT = 'arthas-vscode';
 /** def / 常量条目的显示标签（跟随 VSCode 显示语言） */
 const labelOf = (zh: string, en?: string): string => t(zh, en ?? zh);
 
-const documentVersionCache = new WeakMap<vscode.TextDocument, { version: number; model: JavaFileModel | null }>();
+const documentVersionCache = new WeakMap<
+  vscode.TextDocument,
+  { version: number; model: JavaFileModel | null; text: string; masked: string }
+>();
 
-/** 获取当前文档结构：优先 redhat.java 符号，失败退回文本解析 */
-async function getModel(document: vscode.TextDocument): Promise<JavaFileModel | null> {
+/** 获取文档结构/文本/掩码文本：优先 redhat.java 符号，失败退回文本解析；全部按 version 缓存 */
+async function getDocumentInfo(
+  document: vscode.TextDocument,
+): Promise<{ model: JavaFileModel | null; text: string; masked: string }> {
   const cached = documentVersionCache.get(document);
   if (cached && cached.version === document.version) {
-    return cached.model;
+    return cached;
   }
+  const text = document.getText();
   let model: JavaFileModel | null = null;
   try {
     model = await buildModelFromSymbols(document);
@@ -44,10 +50,11 @@ async function getModel(document: vscode.TextDocument): Promise<JavaFileModel | 
     model = null;
   }
   if (!model) {
-    model = parseJavaText(document.getText());
+    model = parseJavaText(text);
   }
-  documentVersionCache.set(document, { version: document.version, model });
-  return model;
+  const info = { version: document.version, model, text, masked: maskJavaText(text) };
+  documentVersionCache.set(document, info);
+  return info;
 }
 
 /** 解析当前编辑器光标处的完整上下文 */
@@ -57,18 +64,19 @@ async function resolveActiveContext(): Promise<ActiveContext | null> {
     return null;
   }
   const document = editor.document;
-  const model = await getModel(document);
+  const { model, text, masked } = await getDocumentInfo(document);
   if (!model || model.types.length === 0) {
     return null;
   }
   const pos = editor.selection.active;
   const fileName = document.uri.path.split('/').pop() ?? 'Unknown.java';
   const java = resolveContext({
-    text: document.getText(),
+    text,
     fileName,
     line: pos.line,
     character: pos.character,
     model,
+    maskedText: masked,
   });
   if (!java) {
     return null;
@@ -346,16 +354,22 @@ function runOpenSettings(): void {
 // ---------- 右键菜单动态显隐（等价 IDEA 各 Action 的 update()） ----------
 
 let updateTimer: ReturnType<typeof setTimeout> | undefined;
+/** 轮次序号：新一轮更新开启后，未跑完的旧轮次自动放弃，避免交错写入混合的菜单状态 */
+let contextKeyEpoch = 0;
 
 async function setContext(key: string, value: boolean): Promise<void> {
   await vscode.commands.executeCommand('setContext', key, value);
 }
 
 async function updateContextKeys(): Promise<void> {
+  const epoch = ++contextKeyEpoch;
   const editor = vscode.window.activeTextEditor;
   const isJava = !!editor && editor.document.languageId === 'java';
 
   await setContext('arthas.springConfigured', isSpringContextConfigured(getSettings()));
+  if (epoch !== contextKeyEpoch) {
+    return;
+  }
 
   let input: BuildInput | null = null;
   if (isJava) {
@@ -364,7 +378,13 @@ async function updateContextKeys(): Promise<void> {
       input = buildInputOf(ctx);
     }
   }
+  if (epoch !== contextKeyEpoch) {
+    return;
+  }
   for (const def of commandDefs) {
+    if (epoch !== contextKeyEpoch) {
+      return;
+    }
     // 与光标无关的命令（dashboard/logger/安装脚本等）始终可用，不受光标位置影响
     const supported = def.contextFree ? true : !!input && def.support(input);
     await setContext(`arthas.cmd.${def.id}`, supported);

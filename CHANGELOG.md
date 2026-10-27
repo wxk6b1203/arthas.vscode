@@ -15,6 +15,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - README 改为英文为主（市场页），中文版拆分至 `README.zh-CN.md`，两文件顶部互链；目录结构补齐 script/mybatis 模块。
+- 性能：文档掩码文本（maskJavaText）与结构模型一并按 document.version 缓存，光标移动不再每次全文重扫。
+- 菜单 context key 更新加轮次守卫，快速移动光标时旧轮次自动放弃，消除交错写入的混合菜单状态。
+
+### Fixed
+
+- 补齐 10 条预设命令（vmoption 系列等）缺失的英文标签；新增元测试固化 nls 键对齐、命令/菜单注册、双语标签覆盖，防止单侧改动漂移。
 
 ### Added
 

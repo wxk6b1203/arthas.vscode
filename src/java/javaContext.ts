@@ -15,6 +15,8 @@ export interface ResolveInput {
   /** 0 基列号 */
   character: number;
   model: JavaFileModel;
+  /** 预计算的掩码文本（大文件下避免每次光标移动重复全文掩码）；不传则现场计算 */
+  maskedText?: string;
 }
 
 /** 找到包含光标行的最内层类型（返回从外到内的链） */
@@ -160,7 +162,7 @@ export function resolveContext(input: ResolveInput): JavaContext | null {
   // 匿名类：光标处于 new Xxx(){...} 体内（用掩码文本避免字符串/注释误报）
   let isAnonymous = false;
   try {
-    const masked = maskJavaText(text);
+    const masked = input.maskedText ?? maskJavaText(text);
     const offset = lines.slice(0, line).reduce((acc, l) => acc + l.length + 1, 0) + input.character;
     isAnonymous = findAnonymousContainer(masked, offset);
   } catch {
