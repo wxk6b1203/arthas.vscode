@@ -51,5 +51,6 @@
   "config.conditionExpressDisplay": "Append default condition express '1==1' to generated commands.",
   "config.traceSkipJdk": "Skip JDK methods in trace. When false, appends --skipJDKMethod false.",
   "config.staticSpringContextOgnl": "Static spring context ognl expression, e.g. @com.demo.ApplicationContextProvider@context. Must NOT be the default value to enable the static spring context features.",
-  "config.autoToUnicode": "Automatically convert Chinese characters in copied commands to \\uXXXX unicode escapes."
+  "config.autoToUnicode": "Automatically convert Chinese characters in copied commands to \\uXXXX unicode escapes.",
+  "config.showCopyNotification": "Show the notification after copying a command (it also carries the Open doc / AOP variant buttons). Click \"Don't show again\" on the notification to turn it off."
 }

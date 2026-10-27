@@ -458,6 +458,11 @@
           "type": "boolean",
           "default": true,
           "description": "%config.autoToUnicode%"
+        },
+        "arthas.showCopyNotification": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.showCopyNotification%"
         }
       }
     }

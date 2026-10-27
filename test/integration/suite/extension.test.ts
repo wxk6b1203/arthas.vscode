@@ -51,11 +51,17 @@ async function selectRange(marker: string): Promise<void> {
   await sleep(100);
 }
 
-/** 执行命令（会弹通知），等待剪贴板写入后关闭通知并读取剪贴板 */
+/** 执行命令（会弹通知），轮询关闭通知直到命令 promise 完成后读取剪贴板 */
 async function runCommandAndReadClipboard(commandId: string): Promise<string> {
   const pending = vscode.commands.executeCommand(`arthas-vscode.${commandId}`);
-  await sleep(400);
-  await dismissPopups();
+  // 通知可能在命令执行后才弹出（宿主繁忙时更慢），反复关闭直到 promise 完成
+  for (let i = 0; i < 60; i++) {
+    const settled = await Promise.race([pending.then(() => true), sleep(500).then(() => false)]);
+    if (settled) {
+      break;
+    }
+    await dismissPopups();
+  }
   await pending;
   return vscode.env.clipboard.readText();
 }
@@ -180,5 +186,20 @@ describe('arthas-vscode 集成测试（真实扩展宿主）', () => {
       await runCommandAndReadClipboard('install.asSh'),
       `curl -L "https://arthas.aliyun.com/as.sh" >as.sh;chmod a+x as.sh;./as.sh`,
     );
+  });
+
+  it('showCopyNotification=false：静默复制，命令正常完成', async () => {
+    const cfg = vscode.workspace.getConfiguration('arthas');
+    await cfg.update('showCopyNotification', false, vscode.ConfigurationTarget.Global);
+    try {
+      await openDemoJava();
+      await placeCursor('public String hello');
+      assert.strictEqual(
+        await runCommandAndReadClipboard('watch'),
+        `watch com.example.demo.Demo hello '{params,returnObj,throwExp}' -n 5 -x 3`,
+      );
+    } finally {
+      await cfg.update('showCopyNotification', true, vscode.ConfigurationTarget.Global);
+    }
   });
 });

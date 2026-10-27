@@ -22,7 +22,13 @@ export async function copyCommand(command: string, options?: CopyOptions): Promi
   const text = settings.autoToUnicode ? toUnicodeEscape(command) : command;
   await vscode.env.clipboard.writeText(text);
 
+  // 已关闭提示：静默复制（文档/AOP 变体按钮随通知一并隐藏，可在设置重新开启）
+  if (!settings.showCopyNotification) {
+    return;
+  }
+
   const docBtn = t('打开文档', 'Open doc');
+  const muteBtn = t('不再提示', "Don't show again");
   const buttons: string[] = [];
   if (options?.docUrl) {
     buttons.push(docBtn);
@@ -30,9 +36,26 @@ export async function copyCommand(command: string, options?: CopyOptions): Promi
   if (options?.alt) {
     buttons.push(options.alt.label);
   }
+  buttons.push(muteBtn);
   const msg = `${t('已复制 Arthas 命令', 'Arthas command copied')}: ${command}`;
-  const chosen = buttons.length > 0 ? await vscode.window.showInformationMessage(msg, ...buttons) : undefined;
+  const chosen = await vscode.window.showInformationMessage(msg, ...buttons);
   if (!chosen) {
+    return;
+  }
+  if (chosen === muteBtn) {
+    await vscode.workspace
+      .getConfiguration('arthas')
+      .update('showCopyNotification', false, vscode.ConfigurationTarget.Global);
+    const reopenBtn = t('重新开启', 'Re-enable');
+    const reopen = await vscode.window.showInformationMessage(
+      t('已关闭复制提示（命令仍会正常复制到剪贴板）', 'Copy notification disabled (commands are still copied to the clipboard)'),
+      reopenBtn,
+    );
+    if (reopen === reopenBtn) {
+      await vscode.workspace
+        .getConfiguration('arthas')
+        .update('showCopyNotification', true, vscode.ConfigurationTarget.Global);
+    }
     return;
   }
   if (options?.docUrl && chosen === docBtn) {

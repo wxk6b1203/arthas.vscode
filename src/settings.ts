@@ -18,5 +18,6 @@ export function getSettings(): ArthasSettings {
     traceSkipJdk: config.get<boolean>('traceSkipJdk', false),
     staticSpringContextOgnl: config.get<string>('staticSpringContextOgnl', DEFAULT_SETTINGS.staticSpringContextOgnl),
     autoToUnicode: config.get<boolean>('autoToUnicode', true),
+    showCopyNotification: config.get<boolean>('showCopyNotification', true),
   };
 }

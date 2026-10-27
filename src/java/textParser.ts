@@ -92,6 +92,12 @@ const RESERVED_WORDS = new Set([
 
 const ANNOTATION_PREFIX_RE = /^@[\w$.]+\s*(\([^()]*\))?\s*/;
 
+/** 符号名归一化：jdt.ls 的方法符号名可能携带参数（如 "hello(String)"、"Foo()"），去掉参数部分 */
+export function cleanMemberName(name: string): string {
+  const idx = name.indexOf('(');
+  return idx >= 0 ? name.slice(0, idx).trim() : name;
+}
+
 /** 按顶层分隔符切分（忽略 <> 与 () 内部的分隔符） */
 export function splitTopLevel(s: string, sep: string): string[] {
   const out: string[] = [];

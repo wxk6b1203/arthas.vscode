@@ -48,14 +48,15 @@
 | `arthas.traceSkipJdk` | false | false 时 trace 追加 `--skipJDKMethod false` |
 | `arthas.staticSpringContextOgnl` | `@applicationContextProvider@context` | **静态 Spring Context ognl**，改为非默认值后启用静态 Spring 相关命令（如 `@com.demo.ApplicationContextProvider@context`） |
 | `arthas.autoToUnicode` | true | 复制时中文自动转 `\uXXXX` |
+| `arthas.showCopyNotification` | true | 复制后的提示通知（含"打开文档/AOP 变体"按钮）；点通知上的**不再提示**可一键关闭 |
 
 ## 开发
 
 ```bash
 npm install
 npm run compile           # esbuild 打包到 out/
-npm test                  # mocha 单元测试（63 个用例）
-npm run test-integration  # 真实 VSCode 宿主集成测试（11 个用例）
+npm test                  # mocha 单元测试（74 个用例）
+npm run test-integration  # 真实 VSCode 宿主集成测试（基础 11 + Lombok 4 个用例）
 ```
 
 - `F5` 启动 Extension Development Host 调试
@@ -67,7 +68,8 @@ npm run test-integration  # 真实 VSCode 宿主集成测试（11 个用例）
 
 - **优先复用本机 VSCode**（自动探测常见安装路径；也可用环境变量 `VSCODE_EXECUTABLE_PATH` 指定）；找不到时自动下载 stable 版到 `.vscode-test/`（首次较慢）。
 - 测试实例使用 `.vscode-test/` 下的隔离 profile，不影响本机 VSCode 配置和已装扩展。
-- 测试实例未安装 redhat.java（通过 `setTextDocumentLanguage` 指定 java 语言），因此覆盖的是**文本解析兜底路径**；需要验证 DocumentSymbol 主路径时，可在测试实例中安装 redhat.java 后重跑。
+- 默认覆盖**文本解析兜底路径**（通过 `setTextDocumentLanguage` 指定 java 语言，无需任何 Java 插件）。
+- 执行一次 `node tools/setup-redhat.js` 将本机 redhat.java 复制注册进测试实例后：基础套件同时覆盖 **DocumentSymbol 主路径**，并自动追加 **Lombok 套件**（`@Data`/`@Builder` fixture，验证方法名归一化、注解字段区间匹配、Lombok setter 推断、合成 Builder 类过滤）；可在 `test/fixtures-lombok/lib/` 放置 lombok jar 启用完整注解处理（jar 不入库）。
 
 ### 目录结构
 

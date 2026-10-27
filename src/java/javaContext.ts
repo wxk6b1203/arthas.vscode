@@ -65,9 +65,22 @@ export function findAnonymousContainer(maskedText: string, offset: number): bool
   return false;
 }
 
-/** 类声明上方连续注解行（原始文本） */
+/** 类/成员声明上方连续注解行（原始文本）。
+ * 符号路径下 declLine 可能落在注解块首行（redhat.java 的 range 起始于首个注解），
+ * 此时先向下补齐同一注解块内的其余注解行（到声明行为止），再向上继续收集。 */
 function annotationsAbove(lines: string[], declLine: number): string[] {
   const out: string[] = [];
+  for (let i = declLine; i < lines.length; i++) {
+    const t = (lines[i] ?? '').trim();
+    if (t.startsWith('@')) {
+      out.push(lines[i]);
+      continue;
+    }
+    if (t.startsWith('(') || t.startsWith(')')) {
+      continue; // 多行注解参数续行
+    }
+    break; // 声明行（或空行）为止
+  }
   for (let i = declLine - 1; i >= 0; i--) {
     const t = (lines[i] ?? '').trim();
     if (!t) {
@@ -102,6 +115,34 @@ export function buildEnumResolver(model: JavaFileModel): (simpleName: string) =>
   return (simpleName: string) => enumTypes.get(simpleName);
 }
 
+const LOMBOK_NONE_RE = /AccessLevel\s*\.\s*NONE/;
+
+/**
+ * Lombok 注解推断：类/字段注解是否意味着存在 setXxx 方法。
+ * - 字段级 @Setter 优先（AccessLevel.NONE 表示不生成）
+ * - 类级 @Data / @Setter 生成全部 setter；@Value 只有 getter；
+ *   @Accessors(fluent = true) 生成的方法名不带 set 前缀
+ */
+export function lombokSetterExists(fieldAnnotations: string[], classAnnotations: string[]): boolean {
+  const fieldSetter = fieldAnnotations.find((a) => /^@(lombok\.)?Setter\b/.test(a.trim()));
+  if (fieldSetter) {
+    return !LOMBOK_NONE_RE.test(fieldSetter);
+  }
+  const classGenerates = classAnnotations.some(
+    (a) => /^@(lombok\.)?(Data|Setter)\b/.test(a.trim()) && !LOMBOK_NONE_RE.test(a),
+  );
+  if (!classGenerates) {
+    return false;
+  }
+  return !classAnnotations.some((a) => {
+    const t = a.trim();
+    if (/^@(lombok\.)?Value\b/.test(t)) {
+      return true;
+    }
+    return /^@(lombok\.)?Accessors\b/.test(t) && /fluent\s*=\s*true/.test(t);
+  });
+}
+
 /**
  * 解析光标处上下文。返回 null 表示无法识别（例如不在任何类型内）。
  */
@@ -130,7 +171,8 @@ export function resolveContext(input: ResolveInput): JavaContext | null {
     ? `${model.packageName ? model.packageName + '.' : ''}${fileBaseName}*$*`
     : `${model.packageName ? model.packageName + '.' : ''}${chain.map((t) => t.name).join('$')}`;
 
-  // 成员判定：方法（声明行..方法体结束行），字段/枚举常量（声明行）
+  // 成员判定：方法（声明行..方法体结束行），字段/枚举常量（声明行..range 末行，
+  // redhat.java 下含注解的字段 range 起始于注解行）
   let method: MemberDecl | undefined;
   for (const m of innermost.methods) {
     if (line >= m.declLine && line <= m.endLine) {
@@ -140,7 +182,7 @@ export function resolveContext(input: ResolveInput): JavaContext | null {
   }
   let field: MemberDecl | undefined;
   for (const f of innermost.fields) {
-    if (f.declLine === line) {
+    if (line >= f.declLine && line <= f.endLine) {
       field = f;
       break;
     }
@@ -167,14 +209,18 @@ export function resolveContext(input: ResolveInput): JavaContext | null {
 
   const isConstructor = kind === 'method' && method !== undefined && method.name === innermost.name;
 
-  // setter 检测（仅字段有意义）
+  const classAnnotations = annotationsAbove(lines, innermost.declLine);
+
+  // setter 检测：显式声明的方法，或 Lombok 注解推断（@Data/@Setter 等）
   let hasSetter = false;
   if (kind === 'field') {
     const setterName = 'set' + field!.name.charAt(0).toUpperCase() + field!.name.slice(1);
-    hasSetter = innermost.methods.some((m) => m.name === setterName);
+    hasSetter =
+      innermost.methods.some((m) => m.name === setterName) ||
+      lombokSetterExists(annotationsAbove(lines, field!.declLine), classAnnotations);
   }
 
-  const springBeanName = beanNameFromAnnotations(annotationsAbove(lines, innermost.declLine), innermost.name);
+  const springBeanName = beanNameFromAnnotations(classAnnotations, innermost.name);
 
   const methodName = isConstructor ? '<init>' : kind === 'method' ? method!.name : '*';
 

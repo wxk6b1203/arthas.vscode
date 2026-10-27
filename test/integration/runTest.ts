@@ -47,6 +47,22 @@ async function main(): Promise<void> {
   if (exitCode !== 0) {
     process.exit(exitCode);
   }
+  // 检测到 redhat.java 时追加 Lombok 主路径套件（无则跳过，文本兜底路径已由基础套件覆盖）
+  const extDir = path.join(ROOT, '.vscode-test', 'extensions');
+  const hasRedhat =
+    fs.existsSync(extDir) && fs.readdirSync(extDir).some((d) => d.startsWith('redhat.java-'));
+  if (hasRedhat) {
+    console.log('[test-integration] 检测到 redhat.java，追加 Lombok 主路径套件');
+    const lombokCode = await runTests({
+      vscodeExecutablePath,
+      extensionDevelopmentPath: ROOT,
+      extensionTestsPath: path.join(__dirname, 'suite', 'lombok.js'),
+      launchArgs: [path.join(ROOT, 'test', 'fixtures-lombok')],
+    });
+    if (lombokCode !== 0) {
+      process.exit(lombokCode);
+    }
+  }
 }
 
 main().catch((err) => {

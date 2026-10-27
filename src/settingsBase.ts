@@ -12,6 +12,7 @@ export interface ArthasSettings {
   traceSkipJdk: boolean;
   staticSpringContextOgnl: string;
   autoToUnicode: boolean;
+  showCopyNotification: boolean;
 }
 
 export const DEFAULT_SPRING_CONTEXT = '@applicationContextProvider@context';
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: ArthasSettings = {
   traceSkipJdk: false,
   staticSpringContextOgnl: DEFAULT_SPRING_CONTEXT,
   autoToUnicode: true,
+  showCopyNotification: true,
 };
 
 /**

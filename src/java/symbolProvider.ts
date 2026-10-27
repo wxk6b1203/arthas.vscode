@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import { DocumentSymbol, SymbolKind, TextDocument } from 'vscode';
 import { JavaFileModel, MemberDecl, TypeDecl, TypeKind } from './model';
-import { maskJavaText, parseFieldTypeName, parseParamTypes } from './textParser';
+import { maskJavaText, parseFieldTypeName, parseParamTypes, cleanMemberName } from './textParser';
 
 function symbolToTypeKind(kind: SymbolKind): TypeKind | null {
   switch (kind) {
@@ -28,6 +28,25 @@ function isMethodKind(kind: SymbolKind): boolean {
 
 function isFieldKind(kind: SymbolKind): boolean {
   return kind === SymbolKind.Field || kind === SymbolKind.Property || kind === SymbolKind.Constant || kind === SymbolKind.EnumMember;
+}
+
+/** 类型名转义后用于源码声明匹配（类名可含 $） */
+function escapeNameForRegex(name: string): string {
+  return name.replace(/[$]/g, '\\$');
+}
+
+/**
+ * 判断类型是否真实声明于源码：lombok @Builder 会让 jdt.ls 报出无源码的合成嵌套类
+ * （如 FooBuilder，range 收缩到注解行），这类符号不应参与光标上下文判定。
+ */
+function isDeclaredInSource(document: TextDocument, name: string, startLine: number, endLine: number): boolean {
+  const re = new RegExp(`\\b(?:class|interface|enum|record)\\s+${escapeNameForRegex(name)}\\b`);
+  for (let l = startLine; l <= endLine && l < document.lineCount; l++) {
+    if (re.test(document.lineAt(l).text)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** 读取声明行原始文本（跨行取到 ')' 或 ';' 为止）再遮蔽字符串/注释，用于修饰符/签名解析 */
@@ -58,6 +77,10 @@ function convertSymbol(sym: DocumentSymbol, document: TextDocument, parent: Type
   const endLine = sym.range.end.line;
 
   if (typeKind) {
+    if (!isDeclaredInSource(document, sym.name, startLine, endLine)) {
+      // lombok @Builder 等生成的合成类型（源码中无 class/interface/enum/record 声明）：忽略
+      return;
+    }
     const decl: TypeDecl = {
       kind: typeKind,
       name: sym.name,
@@ -92,7 +115,7 @@ function convertSymbol(sym: DocumentSymbol, document: TextDocument, parent: Type
       ? parseParamTypes(text)
       : fallbackParamsFromDetail(sym.detail);
     const member: MemberDecl = {
-      name: sym.name,
+      name: cleanMemberName(sym.name),
       declLine: startLine,
       endLine: endLine,
       paramTypes,
@@ -113,7 +136,8 @@ function convertSymbol(sym: DocumentSymbol, document: TextDocument, parent: Type
     const member: MemberDecl = {
       name: sym.name,
       declLine: startLine,
-      endLine: startLine,
+      // 含注解的字段 range 起始于注解行、结束于声明行，保留完整区间供光标匹配
+      endLine: endLine,
       paramTypes: [],
       isStatic: mods.isStatic,
       isFinal: mods.isFinal,

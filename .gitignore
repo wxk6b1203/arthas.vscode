@@ -4,3 +4,6 @@ out-test/
 *.vsix
 .vscode-test/
 .DS_Store
+
+# lombok 集成测试的可选依赖（本机放置，勿提交）
+test/fixtures-lombok/lib/
