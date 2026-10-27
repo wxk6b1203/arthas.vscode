@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-10-28
+
+### Added
+
+- **Mybatis Mapper XML 热重载**：资源管理器右键单个 mapper `.xml`（或 xml 编辑器右键 / 命令面板）生成自包含一键脚本并复制——脚本自动安装 arthas → 选 pid → 解码 xml → `sc -d` 取 classloader hash → ognl 调用重载 bean；通知支持「保存脚本到文件」「打开文档」。需配置静态 Spring Context 且目标应用内置 [mybatis-mapper-reload-spring-boot-start](https://github.com/WangJi92/mybatis-mapper-reload-spring-boot-start)。
+- 一键脚本底座（`src/script/`）：`plugin-common-function.sh` / `mybatis-mapper-xml-reload.sh` 模板（token 化为 `%VAR%`，bash `${...}` 原样保留，强制 LF + `.gitattributes`）、`buildOneLiner` 一行命令生成（对齐 IDEA DirectScriptUtils 剪贴板模式）——后续热更新 redefine/retransform 复用同一底座。
+- 设置项：`arthas.selectProjectName`、`arthas.manualSelectPid`、`arthas.arthasZipDownloadUrl`（一键脚本用，此前因"未使用"移除，现已实际启用）、`arthas.mybatis.reloadBeanName`、`arthas.mybatis.reloadMethodName`。
+
 ## [Unreleased]
 
 ### Added

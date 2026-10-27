@@ -52,5 +52,11 @@
   "config.traceSkipJdk": "Skip JDK methods in trace. When false, appends --skipJDKMethod false.",
   "config.staticSpringContextOgnl": "Static spring context ognl expression, e.g. @com.demo.ApplicationContextProvider@context. Must NOT be the default value to enable the static spring context features.",
   "config.autoToUnicode": "Automatically convert Chinese characters in copied commands to \\uXXXX unicode escapes.",
-  "config.showCopyNotification": "Show the notification after copying a command (it also carries the Open doc / AOP variant buttons). Click \"Don't show again\" on the notification to turn it off."
+  "config.showCopyNotification": "Show the notification after copying a command (it also carries the Open doc / AOP variant buttons). Click \"Don't show again\" on the notification to turn it off.",
+  "cmd.mybatis.reload": "Arthas: Mybatis Mapper XML Hot Reload (copy one-liner script)",
+  "config.selectProjectName": "Default --select value (jps -l process name) used by generated one-click scripts. Empty = interactive pid selection in the script.",
+  "config.manualSelectPid": "Select the target pid interactively inside the generated script (jps -l). When off, arthas.selectProjectName is required.",
+  "config.arthasZipDownloadUrl": "Download URL of the arthas full zip package used by generated one-click scripts.",
+  "config.mybatis.reloadBeanName": "Bean name of the Mybatis XML reload service. The target application must contain this bean (see mybatis-mapper-reload-spring-boot-start).",
+  "config.mybatis.reloadMethodName": "Method name of the Mybatis XML reload service bean."
 }

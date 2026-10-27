@@ -52,5 +52,11 @@
   "config.traceSkipJdk": "trace 是否跳过 JDK 方法。为 false 时追加 --skipJDKMethod false。",
   "config.staticSpringContextOgnl": "静态 Spring Context 的 ognl 表达式，例如 @com.demo.ApplicationContextProvider@context。必须修改为非默认值，静态 Spring 相关功能才会启用。",
   "config.autoToUnicode": "复制命令时自动将中文字符转换为 \\uXXXX unicode 转义。",
-  "config.showCopyNotification": "复制命令后弹出的提示（同时承载\"打开文档/AOP 变体\"按钮）。可在通知上点\"不再提示\"关闭。"
+  "config.showCopyNotification": "复制命令后弹出的提示（同时承载\"打开文档/AOP 变体\"按钮）。可在通知上点\"不再提示\"关闭。",
+  "cmd.mybatis.reload": "Arthas: Mybatis Mapper XML 热重载（复制一键脚本）",
+  "config.selectProjectName": "一键脚本默认的 --select 值（jps -l 显示的进程名）。留空则脚本内交互式选择 pid。",
+  "config.manualSelectPid": "生成的脚本内交互式（jps -l）选择目标进程。关闭时必须配置 arthas.selectProjectName。",
+  "config.arthasZipDownloadUrl": "一键脚本下载安装 arthas 完整 zip 包的地址。",
+  "config.mybatis.reloadBeanName": "Mybatis XML 重载服务的 bean 名。目标应用需内置该 bean（见 mybatis-mapper-reload-spring-boot-start）。",
+  "config.mybatis.reloadMethodName": "Mybatis XML 重载服务 bean 的方法名。"
 }

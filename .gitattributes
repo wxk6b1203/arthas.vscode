@@ -1,0 +1,2 @@
+# bash 脚本必须 LF 行尾，防止 Windows autocrlf 破坏
+*.sh text eol=lf

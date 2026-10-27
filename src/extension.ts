@@ -14,6 +14,7 @@ import { getSettings, isSpringContextConfigured, ArthasSettings } from './settin
 import { copyCommand, warnBuildFailed, warnNoJavaContext, warnNotSupported } from './util/clipboard';
 import { editablePrompt, PickItem, pickCommand } from './util/input';
 import { t } from './util/i18n';
+import { runMybatisReload } from './mybatis/mybatisReload';
 
 interface ActiveContext {
   java: ReturnType<typeof resolveContext>;
@@ -393,6 +394,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(`${EXT}.presets`, runPresets),
     vscode.commands.registerCommand(`${EXT}.docs`, runDocs),
     vscode.commands.registerCommand(`${EXT}.openSettings`, runOpenSettings),
+    // explorer 右键传入 uri；命令面板走 activeTextEditor 兜底
+    vscode.commands.registerCommand(`${EXT}.mybatis.reload`, (uri?: vscode.Uri) => runMybatisReload(uri)),
     vscode.window.onDidChangeActiveTextEditor(scheduleContextUpdate),
     vscode.window.onDidChangeTextEditorSelection(scheduleContextUpdate),
     vscode.workspace.onDidChangeConfiguration((e) => {

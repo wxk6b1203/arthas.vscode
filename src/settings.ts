@@ -19,5 +19,10 @@ export function getSettings(): ArthasSettings {
     staticSpringContextOgnl: config.get<string>('staticSpringContextOgnl', DEFAULT_SETTINGS.staticSpringContextOgnl),
     autoToUnicode: config.get<boolean>('autoToUnicode', true),
     showCopyNotification: config.get<boolean>('showCopyNotification', true),
+    selectProjectName: config.get<string>('selectProjectName', ''),
+    manualSelectPid: config.get<boolean>('manualSelectPid', true),
+    arthasZipDownloadUrl: config.get<string>('arthasZipDownloadUrl', DEFAULT_SETTINGS.arthasZipDownloadUrl),
+    mybatisReloadBeanName: config.get<string>('mybatis.reloadBeanName', DEFAULT_SETTINGS.mybatisReloadBeanName),
+    mybatisReloadMethodName: config.get<string>('mybatis.reloadMethodName', DEFAULT_SETTINGS.mybatisReloadMethodName),
   };
 }

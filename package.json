@@ -2,7 +2,7 @@
   "name": "arthas-vscode",
   "displayName": "Arthas VSCode",
   "description": "%extension.description%",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "arthas-vscode",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -178,6 +178,10 @@
       {
         "command": "arthas-vscode.openSettings",
         "title": "%cmd.openSettings%"
+      },
+      {
+        "command": "arthas-vscode.mybatis.reload",
+        "title": "%cmd.mybatis.reload%"
       }
     ],
     "submenus": [
@@ -207,6 +211,18 @@
         {
           "submenu": "arthas.command",
           "when": "editorLangId == java",
+          "group": "z_arthas@1"
+        },
+        {
+          "command": "arthas-vscode.mybatis.reload",
+          "when": "editorLangId == xml",
+          "group": "z_arthas@2"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "arthas-vscode.mybatis.reload",
+          "when": "resourceExtname == .xml && !explorerResourceIsFolder && !listMultiSelection",
           "group": "z_arthas@1"
         }
       ],
@@ -463,6 +479,31 @@
           "type": "boolean",
           "default": true,
           "description": "%config.showCopyNotification%"
+        },
+        "arthas.selectProjectName": {
+          "type": "string",
+          "default": "",
+          "description": "%config.selectProjectName%"
+        },
+        "arthas.manualSelectPid": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.manualSelectPid%"
+        },
+        "arthas.arthasZipDownloadUrl": {
+          "type": "string",
+          "default": "https://arthas.aliyun.com/download/latest_version?mirror=aliyun",
+          "description": "%config.arthasZipDownloadUrl%"
+        },
+        "arthas.mybatis.reloadBeanName": {
+          "type": "string",
+          "default": "mybatisMapperXmlFileReloadService",
+          "description": "%config.mybatis.reloadBeanName%"
+        },
+        "arthas.mybatis.reloadMethodName": {
+          "type": "string",
+          "default": "reloadAllSqlSessionFactoryMapper",
+          "description": "%config.mybatis.reloadMethodName%"
         }
       }
     }
