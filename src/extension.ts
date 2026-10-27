@@ -127,7 +127,7 @@ async function runLogger(ctx: ActiveContext): Promise<void> {
   const levels = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
   const picked = await vscode.window.showQuickPick(
     levels.map((l) => ({ label: l, description: `logger --name ${name} --level ${l.toLowerCase()}` })),
-    { title: t('选择日志级别', 'Select log level'), ignoreFocusOut: true, placeHolder: name },
+    { title: t('选择日志级别', 'Select log level'), placeHolder: name },
   );
   if (!picked) {
     return;

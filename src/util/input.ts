@@ -9,6 +9,7 @@ export async function editablePrompt(title: string, value: string): Promise<stri
     title,
     value,
     prompt: t('可直接编辑，回车复制到剪贴板', 'Edit if needed, press Enter to copy'),
+    // 可编辑命令通常较长，失焦不关闭，避免误点丢掉已编辑内容（QuickPick 则跟随原生失焦即关）
     ignoreFocusOut: true,
   });
 }
@@ -25,7 +26,6 @@ export async function pickCommand(title: string, items: PickItem[]): Promise<Pic
   const picked = await vscode.window.showQuickPick(items, {
     title,
     matchOnDetail: true,
-    ignoreFocusOut: true,
     placeHolder: t('选择要复制的命令', 'Select a command to copy'),
   });
   return picked;
