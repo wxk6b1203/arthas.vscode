@@ -174,24 +174,56 @@ function fallbackParamsFromDetail(detail?: string): string[] {
     .filter(Boolean);
 }
 
-/** 尝试通过 DocumentSymbol 构建 model；无符号（未装 redhat.java 等）返回 null */
-export async function buildModelFromSymbols(document: TextDocument): Promise<JavaFileModel | null> {
-  let symbols: DocumentSymbol[] | undefined;
+/** redhat.java 预热期间符号请求可能长时间挂起，超时后立即退回文本解析 */
+const SYMBOL_TIMEOUT_MS = 500;
+
+function withTimeout<T>(p: Thenable<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
+
+export interface SymbolResult {
+  /** 无符号（未装 redhat.java / 非 java 项目）时为 null */
+  model: JavaFileModel | null;
+  /** 符号请求超时（jdt.ls 预热中），调用方不应缓存兜底结果以便稍后重试 */
+  timedOut: boolean;
+}
+
+/** 尝试通过 DocumentSymbol 构建 model */
+export async function buildModelFromSymbols(document: TextDocument): Promise<SymbolResult> {
+  let symbols: DocumentSymbol[] | null | undefined;
   try {
-    symbols = await vscode.commands.executeCommand<DocumentSymbol[]>('vscode.executeDocumentSymbolProvider', document.uri);
+    symbols = await withTimeout(
+      vscode.commands.executeCommand<DocumentSymbol[]>('vscode.executeDocumentSymbolProvider', document.uri),
+      SYMBOL_TIMEOUT_MS,
+    );
   } catch {
-    return null;
+    return { model: null, timedOut: false };
+  }
+  if (symbols === null) {
+    return { model: null, timedOut: true };
   }
   if (!symbols || symbols.length === 0) {
-    return null;
+    return { model: null, timedOut: false };
   }
   const types: TypeDecl[] = [];
   for (const sym of symbols) {
     convertSymbol(sym, document, null, types);
   }
   if (types.length === 0) {
-    return null;
+    return { model: null, timedOut: false };
   }
   const pkgMatch = /package\s+([\w.]+)\s*;/.exec(document.getText());
-  return { packageName: pkgMatch ? pkgMatch[1] : '', types };
+  return { model: { packageName: pkgMatch ? pkgMatch[1] : '', types }, timedOut: false };
 }

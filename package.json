@@ -23,7 +23,9 @@
     "type": "git",
     "url": "https://github.com/wxk6b1203/arthas.vscode"
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [

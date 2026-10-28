@@ -44,8 +44,11 @@ async function getDocumentInfo(
   }
   const text = document.getText();
   let model: JavaFileModel | null = null;
+  let timedOut = false;
   try {
-    model = await buildModelFromSymbols(document);
+    const result = await buildModelFromSymbols(document);
+    model = result.model;
+    timedOut = result.timedOut;
   } catch {
     model = null;
   }
@@ -53,7 +56,10 @@ async function getDocumentInfo(
     model = parseJavaText(text);
   }
   const info = { version: document.version, model, text, masked: maskJavaText(text) };
-  documentVersionCache.set(document, info);
+  if (!timedOut) {
+    // 符号超时（jdt.ls 预热中）不缓存兜底结果，下次光标移动重试符号路径
+    documentVersionCache.set(document, info);
+  }
   return info;
 }
 
@@ -347,8 +353,9 @@ async function runDocs(): Promise<void> {
   }
 }
 
-function runOpenSettings(): void {
-  vscode.commands.executeCommand('workbench.action.openSettings', `@ext:${EXT}`);
+function runOpenSettings(extensionId: string): void {
+  // @ext: 过滤器需要完整扩展 ID（发布者.名称），如 wxk6b1203.arthas-vscode
+  vscode.commands.executeCommand('workbench.action.openSettings', `@ext:${extensionId}`);
 }
 
 // ---------- 右键菜单动态显隐（等价 IDEA 各 Action 的 update()） ----------
@@ -413,7 +420,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(`${EXT}.quick`, runQuick),
     vscode.commands.registerCommand(`${EXT}.presets`, runPresets),
     vscode.commands.registerCommand(`${EXT}.docs`, runDocs),
-    vscode.commands.registerCommand(`${EXT}.openSettings`, runOpenSettings),
+    vscode.commands.registerCommand(`${EXT}.openSettings`, () => runOpenSettings(context.extension.id)),
     // explorer 右键传入 uri；命令面板走 activeTextEditor 兜底
     vscode.commands.registerCommand(`${EXT}.mybatis.reload`, (uri?: vscode.Uri) => runMybatisReload(uri)),
     vscode.window.onDidChangeActiveTextEditor(scheduleContextUpdate),

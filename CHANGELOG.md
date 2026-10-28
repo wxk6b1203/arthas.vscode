@@ -17,9 +17,12 @@ All notable changes to this project will be documented in this file.
 - README 改为英文为主（市场页），中文版拆分至 `README.zh-CN.md`，两文件顶部互链；目录结构补齐 script/mybatis 模块。
 - 性能：文档掩码文本（maskJavaText）与结构模型一并按 document.version 缓存，光标移动不再每次全文重扫。
 - 菜单 context key 更新加轮次守卫，快速移动光标时旧轮次自动放弃，消除交错写入的混合菜单状态。
+- 激活时机改为 `onStartupFinished`：此前插件仅在首次执行命令时激活，激活前 context key 未设置，右键菜单的 Watch/Trace 等项全部隐藏。
 
 ### Fixed
 
+- redhat.java 预热期间 `executeDocumentSymbolProvider` 长时间挂起导致 context key 更新卡死（菜单项一直不显示）：符号请求加 500ms 超时，超时立即退回文本解析，且不缓存兜底结果以便预热完成后自动恢复符号路径。
+- 「插件设置」跳转使用完整扩展 ID（`context.extension.id`，如 `wxk6b1203.arthas-vscode`）；此前写死 `@ext:arthas-vscode`，`@ext:` 过滤器匹配不到。
 - 补齐 10 条预设命令（vmoption 系列等）缺失的英文标签；新增元测试固化 nls 键对齐、命令/菜单注册、双语标签覆盖，防止单侧改动漂移。
 
 ### Added
