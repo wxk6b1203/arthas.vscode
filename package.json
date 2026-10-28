@@ -2,7 +2,7 @@
   "name": "arthas-vscode",
   "displayName": "Arthas VSCode",
   "description": "%extension.description%",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "wxk6b1203",
   "license": "MIT",
   "icon": "media/icon.png",
