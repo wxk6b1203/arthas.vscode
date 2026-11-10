@@ -46,8 +46,9 @@
 - **主路径**：调用 [Language Support for Java(TM) by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.java) 的 DocumentSymbol 获取准确代码结构（推荐安装）。
 - **兜底路径**：内置轻量文本解析器，未安装 Java 插件或单文件打开时自动降级。
 - 识别能力：包名、内部类（`Outer$Inner`）、匿名类（`Foo*$*` 通配）、构造器（`<init>`）、静态/final 修饰、方法参数类型→OGNL 默认实参、`@Component("x")` Spring Bean 名、setter 检测、枚举常量。
+- 引用解析：光标在方法调用名/字段名/类名上时，用 Java 语言服务的定义跳转解析到工作区内的声明。例如在 `AppContextUtil.getBean(...)` 的 `getBean` 上右键，生成的是 `watch com.x.AppContextUtil getBean ...`，而不是外层的 `FeignCliUtil.getFeignClient`（与 IDEA 的 PSI 引用解析一致）。
 
-与 IDEA 插件的行为差异：光标在**方法体内**时视为该方法（IDEA 原版需要点在方法名上），更符合直觉。
+与 IDEA 插件的行为差异：光标在方法体内的**非引用位置**时视为该方法（IDEA 原版通常要求点在方法名上），更符合直觉；JDK/依赖库内的定义不参与解析，仍回退为外层方法。
 
 ## 设置（`文件 → 首选项 → 设置 → Arthas`）
 

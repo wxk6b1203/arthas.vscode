@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-11-10
+
+### Fixed
+
+- **光标在引用上时解析到被引用的声明**：在 `AppContextUtil.getBean(...)` 的 `getBean` 上右键，此前按外层方法生成 `watch com.x.FeignCliUtil getFeignClient ...`，IDEA 生成的是 `watch com.x.AppContextUtil getBean ...`。现在用 `vscode.executeDefinitionProvider` 解析工作区内的声明，再按目标类/方法/字段生成命令；JDK/依赖库内的定义不解析，仍回退为外层方法。定义请求带 800ms 超时并按光标位置缓存，右键菜单显隐与随后命令执行复用同一份结果；预热期超时的空结果在命令执行时重试一次，避免把外层方法结果固化。
+- 集成测试扩展 ID 改为 `package.json` 中真实的 publisher 名（`wxk6b1203.arthas-vscode`），修复测试宿主中 `getExtension` 找不到开发扩展的问题。
+
 ## [0.2.1] - 2026-10-28
 
 ### Changed

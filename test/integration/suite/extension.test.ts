@@ -8,9 +8,12 @@ import * as assert from 'assert';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-const EXT_ID = 'arthas-vscode.arthas-vscode';
+const EXT_ID = 'wxk6b1203.arthas-vscode';
 const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
-const FIXTURE = path.join(ROOT, 'test', 'fixtures', 'Demo.java');
+const FIXTURE_DIR = path.join(ROOT, 'test', 'fixtures');
+const FIXTURE = path.join(FIXTURE_DIR, 'Demo.java');
+const HELPER_FIXTURE = path.join(FIXTURE_DIR, 'Helper.java');
+const CALLER_FIXTURE = path.join(FIXTURE_DIR, 'Caller.java');
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -20,10 +23,14 @@ async function dismissPopups(): Promise<void> {
   await vscode.commands.executeCommand('workbench.action.closeNotifications').then(undefined, () => undefined);
 }
 
-async function openDemoJava(): Promise<vscode.TextEditor> {
-  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(FIXTURE));
+async function openJavaFile(file: string): Promise<vscode.TextEditor> {
+  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(file));
   await vscode.languages.setTextDocumentLanguage(doc, 'java');
   return vscode.window.showTextDocument(doc);
+}
+
+async function openDemoJava(): Promise<vscode.TextEditor> {
+  return openJavaFile(FIXTURE);
 }
 
 function offsetOfMarker(marker: string): { start: number; end: number } {
@@ -67,10 +74,48 @@ async function runCommandAndReadClipboard(commandId: string): Promise<string> {
 }
 
 describe('arthas-vscode 集成测试（真实扩展宿主）', () => {
+  let fakeDefinitionProvider: vscode.Disposable | undefined;
+
   before(async () => {
     const ext = vscode.extensions.getExtension(EXT_ID);
     assert.ok(ext, '扩展应已加载');
     await ext!.activate();
+
+    // 基础套件不安装 redhat.java：注册一个最小定义提供器，模拟 Java 语言服务的引用跳转，
+    // 用于验证“光标在方法调用名上 → 解析到目标方法所在类”的逻辑（等价 IDEA PSI_ELEMENT）。
+    fakeDefinitionProvider = vscode.languages.registerDefinitionProvider(
+      { language: 'java', scheme: 'file' },
+      {
+        async provideDefinition(document, position) {
+          const wordRange = document.getWordRangeAtPosition(position, /[A-Za-z_$][\w$]*/);
+          if (!wordRange) {
+            return undefined;
+          }
+          const word = document.getText(wordRange);
+          const needle =
+            word === 'work'
+              ? 'work(String input)'
+              : word === 'instanceWork'
+                ? 'instanceWork(String input)'
+                : word === 'Helper'
+                  ? 'class Helper'
+                  : undefined;
+          if (!needle) {
+            return undefined;
+          }
+          const helper = await vscode.workspace.openTextDocument(vscode.Uri.file(HELPER_FIXTURE));
+          const offset = helper.getText().indexOf(needle);
+          if (offset < 0) {
+            return undefined;
+          }
+          return new vscode.Location(helper.uri, helper.positionAt(offset));
+        },
+      },
+    );
+  });
+
+  after(() => {
+    fakeDefinitionProvider?.dispose();
   });
 
   it('扩展激活且贡献命令已注册', async () => {
@@ -105,6 +150,23 @@ describe('arthas-vscode 集成测试（真实扩展宿主）', () => {
     assert.strictEqual(await runCommandAndReadClipboard('sm'), `sm -d com.example.demo.Demo hello`);
     assert.strictEqual(await runCommandAndReadClipboard('jad'), `jad --source-only com.example.demo.Demo hello`);
     assert.strictEqual(await runCommandAndReadClipboard('dump'), `dump com.example.demo.Demo -d /tmp/output`);
+  });
+
+  it('方法调用名上的引用 → 解析到目标类/方法（对齐 IDEA PSI_ELEMENT）', async () => {
+    await openJavaFile(CALLER_FIXTURE);
+    await placeCursor('work("x")');
+    assert.strictEqual(
+      await runCommandAndReadClipboard('watch'),
+      `watch com.example.demo.Helper work '{params,returnObj,throwExp}' -n 5 -x 3`,
+    );
+    await placeCursor('instanceWork("x")');
+    assert.strictEqual(
+      await runCommandAndReadClipboard('watch'),
+      `watch com.example.demo.Helper instanceWork '{params,returnObj,throwExp}' -n 5 -x 3`,
+    );
+    assert.strictEqual(await runCommandAndReadClipboard('sm'), `sm -d com.example.demo.Helper instanceWork`);
+    // 恢复后续用例依赖的 Demo.java 编辑器
+    await openDemoJava();
   });
 
   it('构造器 → <init>', async () => {

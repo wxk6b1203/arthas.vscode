@@ -46,8 +46,9 @@ Prerequisites:
 - **Primary path**: uses the DocumentSymbol API of [Language Support for Java(TM) by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.java) for accurate code structure (recommended).
 - **Fallback path**: built-in lightweight text parser, used automatically when the Java extension is absent or the file is opened standalone.
 - Recognizes: package, inner classes (`Outer$Inner`), anonymous classes (`Foo*$*` wildcard), constructors (`<init>`), static/final modifiers, method parameter types → OGNL default arguments, `@Component("x")` Spring bean names, setters, enum constants.
+- Reference resolution: when the cursor is on a method call name, field name, or class name, the Java language server's definition jump resolves it to the declaration in the workspace. For example, on `getBean` in `AppContextUtil.getBean(...)` the generated command targets `com.x.AppContextUtil#getBean`, not the enclosing `FeignCliUtil#getFeignClient` (matching IDEA's PSI reference resolution).
 
-Deliberate difference from the IDEA plugin: the cursor **inside a method body** counts as that method (the original requires the method name), which is more intuitive.
+Deliberate difference from the IDEA plugin: the cursor **inside a method body but not on a reference** counts as that method (the original usually requires the method name), which is more intuitive; definitions inside the JDK/dependencies are ignored and fall back to the enclosing method.
 
 ## Settings (`File → Preferences → Settings → Arthas`)
 

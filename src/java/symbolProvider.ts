@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { DocumentSymbol, SymbolKind, TextDocument } from 'vscode';
 import { JavaFileModel, MemberDecl, TypeDecl, TypeKind } from './model';
 import { maskJavaText, parseFieldTypeName, parseParamTypes, cleanMemberName } from './textParser';
+import { withTimeout } from '../util/async';
 
 function symbolToTypeKind(kind: SymbolKind): TypeKind | null {
   switch (kind) {
@@ -176,22 +177,6 @@ function fallbackParamsFromDetail(detail?: string): string[] {
 
 /** redhat.java 预热期间符号请求可能长时间挂起，超时后立即退回文本解析 */
 const SYMBOL_TIMEOUT_MS = 500;
-
-function withTimeout<T>(p: Thenable<T>, ms: number): Promise<T | null> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), ms);
-    p.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      () => {
-        clearTimeout(timer);
-        resolve(null);
-      },
-    );
-  });
-}
 
 export interface SymbolResult {
   /** 无符号（未装 redhat.java / 非 java 项目）时为 null */

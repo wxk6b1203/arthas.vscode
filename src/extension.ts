@@ -9,7 +9,9 @@ import { ttCommands } from './command/ttCommands';
 import { resolveContext } from './java/javaContext';
 import { maskJavaText, parseJavaText } from './java/textParser';
 import { buildModelFromSymbols } from './java/symbolProvider';
+import { pickWorkspaceDefinition } from './java/referenceResolver';
 import { JavaContext, JavaFileModel } from './java/model';
+import { withTimeout } from './util/async';
 import { getSettings, isSpringContextConfigured, ArthasSettings } from './settings';
 import { copyCommand, warnBuildFailed, warnNoJavaContext, warnNotSupported } from './util/clipboard';
 import { editablePrompt, PickItem, pickCommand } from './util/input';
@@ -63,8 +65,96 @@ async function getDocumentInfo(
   return info;
 }
 
-/** 解析当前编辑器光标处的完整上下文 */
-async function resolveActiveContext(): Promise<ActiveContext | null> {
+/** jdt.ls 预热期间定义请求可能挂起；超时后按光标所在声明兜底 */
+const DEFINITION_TIMEOUT_MS = 800;
+/** 同一光标位置的定义结果缓存：右键菜单更新与随后命令执行复用，避免重复请求/前后不一致 */
+const DEFINITION_CACHE_LIMIT = 64;
+const DEFINITION_MISS_TTL_MS = 3000;
+
+interface DefinitionResolution {
+  document: vscode.TextDocument;
+  position: vscode.Position;
+}
+
+const definitionCache = new Map<string, { target: DefinitionResolution | null; at: number }>();
+
+function definitionCacheKey(document: vscode.TextDocument, position: vscode.Position): string {
+  return `${document.uri.toString()}|${document.version}|${position.line}:${position.character}`;
+}
+
+function rememberDefinition(key: string, target: DefinitionResolution | null): void {
+  const existing = definitionCache.get(key);
+  // 慢请求超时返回 null 时，不要覆盖并发的成功结果
+  if (existing && existing.target !== null && target === null) {
+    return;
+  }
+  if (definitionCache.size >= DEFINITION_CACHE_LIMIT) {
+    const oldest = definitionCache.keys().next().value;
+    if (oldest !== undefined) {
+      definitionCache.delete(oldest);
+    }
+  }
+  definitionCache.set(key, { target, at: Date.now() });
+}
+
+function isWorkspaceJavaUri(uri: vscode.Uri): boolean {
+  return vscode.workspace.getWorkspaceFolder(uri) !== undefined;
+}
+
+function javaFileName(document: vscode.TextDocument): string {
+  return document.uri.path.split('/').pop() ?? 'Unknown.java';
+}
+
+/**
+ * 光标落在引用（方法调用名/字段名/类名）上时，解析到工作区内对应的声明位置。
+ * 对应 IDEA 的 PSI_ELEMENT 引用解析：在 `AppContextUtil.getBean(...)` 的 `getBean`
+ * 上右键，目标应是 `AppContextUtil#getBean`，而不是外层 `FeignCliUtil#getFeignClient`。
+ * JDK/依赖库定义不返回，保留“光标在方法体内即视为当前方法”的兜底行为。
+ */
+async function resolveDefinitionTarget(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  retryMiss = false,
+): Promise<DefinitionResolution | null> {
+  const key = definitionCacheKey(document, position);
+  const cached = definitionCache.get(key);
+  if (cached) {
+    if (cached.target !== null) {
+      return cached.target;
+    }
+    // 预热期超时的空结果只用于菜单显隐；命令执行时重试，避免把外层方法结果固化
+    if (!retryMiss && Date.now() - cached.at < DEFINITION_MISS_TTL_MS) {
+      return null;
+    }
+  }
+
+  let target: DefinitionResolution | null = null;
+  let result: unknown;
+  try {
+    result = await withTimeout(
+      vscode.commands.executeCommand<unknown>('vscode.executeDefinitionProvider', document.uri, position),
+      DEFINITION_TIMEOUT_MS,
+    );
+  } catch {
+    result = null;
+  }
+  const picked = pickWorkspaceDefinition(result, isWorkspaceJavaUri);
+  if (picked) {
+    try {
+      target = {
+        document: await vscode.workspace.openTextDocument(picked.uri),
+        position: new vscode.Position(picked.range.start.line, picked.range.start.character),
+      };
+    } catch {
+      target = null;
+    }
+  }
+  rememberDefinition(key, target);
+  return target;
+}
+
+/** 解析当前编辑器光标处的完整上下文（含光标下引用的定义跳转）。 */
+async function resolveActiveContext(retryDefinitionMiss = false): Promise<ActiveContext | null> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'java') {
     return null;
@@ -75,10 +165,9 @@ async function resolveActiveContext(): Promise<ActiveContext | null> {
     return null;
   }
   const pos = editor.selection.active;
-  const fileName = document.uri.path.split('/').pop() ?? 'Unknown.java';
-  const java = resolveContext({
+  let java = resolveContext({
     text,
-    fileName,
+    fileName: javaFileName(document),
     line: pos.line,
     character: pos.character,
     model,
@@ -87,11 +176,30 @@ async function resolveActiveContext(): Promise<ActiveContext | null> {
   if (!java) {
     return null;
   }
+  let contextModel = model;
+  const target = await resolveDefinitionTarget(document, pos, retryDefinitionMiss);
+  if (target) {
+    const targetInfo = await getDocumentInfo(target.document);
+    if (targetInfo.model && targetInfo.model.types.length > 0) {
+      const targetJava = resolveContext({
+        text: targetInfo.text,
+        fileName: javaFileName(target.document),
+        line: target.position.line,
+        character: target.position.character,
+        model: targetInfo.model,
+        maskedText: targetInfo.masked,
+      });
+      if (targetJava) {
+        java = targetJava;
+        contextModel = targetInfo.model;
+      }
+    }
+  }
   const selectedText =
     !editor.selection.isEmpty ? document.getText(editor.selection).trim() : '';
   const settings = getSettings();
-  const vars = buildVars(java, settings, model, selectedText);
-  return { java, settings, vars, model, selectedText };
+  const vars = buildVars(java, settings, contextModel, selectedText);
+  return { java, settings, vars, model: contextModel, selectedText };
 }
 
 function buildInputOf(ctx: ActiveContext): BuildInput {
@@ -213,7 +321,7 @@ async function springContextGuard(ctx: ActiveContext): Promise<boolean> {
 // ---------- 通用执行 ----------
 
 async function runDef(def: CommandDef): Promise<void> {
-  let ctx = await resolveActiveContext();
+  let ctx = await resolveActiveContext(true);
   if (!ctx) {
     // 与光标无关的命令（dashboard/logger/classloader/安装脚本等）无需 Java 上下文
     if (!def.contextFree) {
@@ -269,7 +377,7 @@ async function runDef(def: CommandDef): Promise<void> {
 // ---------- 快速获取可用命令（等价 IDEA ArthasShellScriptCommandDialog） ----------
 
 async function runQuick(): Promise<void> {
-  const ctx = await resolveActiveContext();
+  const ctx = await resolveActiveContext(true);
   if (!ctx) {
     warnNoJavaContext();
     return;
@@ -425,6 +533,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(`${EXT}.mybatis.reload`, (uri?: vscode.Uri) => runMybatisReload(uri)),
     vscode.window.onDidChangeActiveTextEditor(scheduleContextUpdate),
     vscode.window.onDidChangeTextEditorSelection(scheduleContextUpdate),
+    // 目标声明可能随编辑移动：定义缓存整体失效，下次重新解析
+    vscode.workspace.onDidChangeTextDocument(() => definitionCache.clear()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('arthas')) {
         scheduleContextUpdate();
